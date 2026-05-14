@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Launch Pod Planner — WITHIN</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#f4f5f7;--card:#fff;--border:#e2e4e9;--border-dashed:#c8cbd2;--text:#1a1a2e;--text-secondary:#6b7280;--text-muted:#9ca3af;--accent:#1a1a2e;--accent-light:#374151;--green:#1a7a2e;--green-bg:#e6f4e8;--green-border:#b4ddb9;--red:#b91c1c;--red-bg:#fde8e8;--red-border:#f5b4b4;--amber:#92600a;--amber-bg:#fef3cd;--amber-border:#f5dfa0;--blue:#1e4d8c;--blue-bg:#e0ecf8;--blue-border:#a8c8e8;--slate-bg:#f0f1f3;--slate-text:#3c4452;--slate-border:#d0d3d9;--radius:10px;--radius-sm:6px}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:32px 20px 60px;line-height:1.5}
+.header{max-width:1100px;margin:0 auto 28px}.header-row{display:flex;align-items:baseline;gap:12px;margin-bottom:4px}
+.header h1{font-family:'DM Serif Display',serif;font-size:28px;font-weight:400;letter-spacing:-.5px}.header p{color:var(--text-secondary);font-size:14px}
+.grid{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.full-width{max-width:1100px;margin:0 auto;padding-top:20px}
+.card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:20px 24px;margin-bottom:16px}
+.card-ref{background:#fafbfc;border:1px dashed var(--border-dashed)}
+.card h2{font-size:16px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h3{font-size:13px;font-weight:700;color:var(--text-secondary);margin-bottom:8px}
+.badge{display:inline-block;padding:2px 10px;border-radius:6px;font-size:12px;font-weight:600;letter-spacing:.2px}
+.badge-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.badge-red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.badge-amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.badge-blue{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
+.badge-slate{background:var(--slate-bg);color:var(--slate-text);border:1px solid var(--slate-border)}
+.label{font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;display:block}
+input,select{width:100%;padding:7px 10px;border-radius:var(--radius-sm);border:1px solid var(--slate-border);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;background:#fff;color:var(--text);transition:border-color .15s}
+input:focus,select:focus{border-color:var(--accent)}select{cursor:pointer}
+.btn{padding:8px 16px;border-radius:7px;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .15s}
+.btn:hover{opacity:.85}.btn-primary{background:var(--accent);color:#fff}.btn-secondary{background:var(--accent-light);color:#fff}
+.btn-danger{padding:4px 10px;border-radius:5px;border:1px solid var(--red-border);background:#fff5f5;color:var(--red);font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:400;line-height:1}
+.btn-outline{background:transparent;border:1px solid var(--slate-border);color:var(--text)}.btn-outline:hover{background:var(--slate-bg)}
+.btn-full{width:100%}.btn-row{display:flex;gap:8px;margin-top:14px}.btn-row .btn{flex:1}
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.metric-big{font-size:24px;font-weight:700;font-family:'DM Serif Display',serif}
+.metric-med{font-size:18px;font-weight:600}.metric-sm{font-size:16px;font-weight:600}
+.metric-hint{font-size:12px;color:var(--text-secondary)}
+.capacity-bar{margin-top:16px;background:#e9eaed;border-radius:6px;height:14px;overflow:hidden}
+.capacity-fill{height:100%;border-radius:6px;transition:width .35s,background .35s}
+.capacity-label{font-size:11px;color:var(--text-secondary);margin-top:4px;text-align:right}
+.p2r-box{margin-top:16px;padding:14px 16px;border-radius:8px;display:flex;justify-content:space-between;align-items:center}
+.p2r-value{font-size:26px;font-weight:700;font-family:'DM Serif Display',serif}
+.hire-item{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:6px;margin-bottom:6px}
+.hire-item-left{display:flex;gap:8px;align-items:center}.hire-item-left span{font-size:13px;font-weight:600}
+.hire-item-right{font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:8px}
+.hire-item-right .over{color:var(--red);font-size:11px;margin-left:6px}
+.proj-grid{border-top:1px solid var(--border);padding-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.warning-box{margin-top:12px;padding:10px 12px;border-radius:6px;background:var(--red-bg);border:1px solid var(--red-border);font-size:13px;color:var(--red)}
+.manager-gap{background:var(--amber-bg);border:1px solid var(--amber-border);font-size:13px;color:var(--amber);padding:12px 16px;border-radius:var(--radius);margin-bottom:16px}
+.ref-content{font-size:13px;color:#4b5563;line-height:1.9}.ref-content strong{color:var(--text)}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+.salary-hint{font-size:12px;color:var(--text-secondary);text-align:right;white-space:nowrap}
+.alloc-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.alloc-table th{text-align:left;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;padding:6px 10px;border-bottom:2px solid var(--border)}
+.alloc-table td{padding:7px 10px;border-bottom:1px solid #f0f1f3}
+.alloc-table tr:last-child td{border-bottom:none}
+.alloc-table .person-row td{background:#fafbfc;font-weight:600;border-bottom:1px solid var(--border)}
+.alloc-table .acct-cell{padding-left:28px;font-weight:400;color:var(--text-secondary)}
+.bar-cell{width:140px}
+.mini-bar{height:10px;border-radius:4px;background:#e9eaed;overflow:hidden}
+.mini-bar-fill{height:100%;border-radius:4px;transition:width .3s}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.dot-green{background:#22c55e}.dot-amber{background:#f59e0b}.dot-red{background:#ef4444}
+.ref-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.ref-table th{text-align:center;font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.4px;padding:6px 8px;border-bottom:2px solid var(--border)}
+.ref-table th:first-child{text-align:left}.ref-table td{padding:7px 8px;border-bottom:1px solid #f0f1f3;text-align:center}
+.ref-table td:first-child{text-align:left;font-weight:600}
+.scenario-bar{max-width:1100px;margin:0 auto 20px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.scenario-bar .label{margin:0}.scenario-bar select{width:auto;min-width:200px}.scenario-bar input{width:auto;min-width:180px}
+.scenario-bar .btn{padding:7px 14px;font-size:12px}.scenario-sep{width:1px;height:28px;background:var(--border);margin:0 4px}
+.scenario-bar .btn-delete{background:transparent;border:1px solid var(--red-border);color:var(--red);padding:7px 10px}
+.autosave-hint{font-size:11px;color:var(--text-muted);margin-left:auto;font-style:italic}
+.staff-grid{display:grid;grid-template-columns:100px 1fr 80px 80px 70px 50px 36px;gap:6px;align-items:center;margin-bottom:8px;font-size:13px}
+.staff-grid.header-row-grid{font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.staff-grid.header-row-grid>div{padding:0 2px}
+.acct-card{background:#fafbfc;border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px}
+.acct-card-header{display:grid;grid-template-columns:1fr 70px 110px 36px;gap:8px;align-items:center;margin-bottom:10px}
+.acct-assign-row{display:grid;grid-template-columns:80px 1fr 70px;gap:8px;align-items:center;margin-bottom:6px;font-size:13px}
+.acct-assign-row .assign-label{font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase}
+.acct-hrs-display{font-size:11px;color:var(--text-muted);text-align:right}
+.fee-wrap{position:relative}.fee-wrap .dollar{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text-secondary)}.fee-wrap input{padding-left:22px}
+.pt-toggle{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-secondary);cursor:pointer}
+.pt-toggle input[type=checkbox]{width:14px;height:14px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-row"><h1>Launch Pod Planner</h1><span class="badge badge-blue">WITHIN</span></div>
+  <p>Scenario planner for staffing, fees, and P2R optimization</p>
+</div>
+
+<div class="scenario-bar">
+  <span class="label">SCENARIOS</span>
+  <select id="scenario-select" onchange="loadScenario(this.value)" style="font-size:13px"><option value="">— Select saved scenario —</option></select>
+  <button class="btn btn-outline" onclick="loadScenario(document.getElementById('scenario-select').value)">↻ Load</button>
+  <button class="btn btn-delete" onclick="deleteScenario()">✕</button>
+  <div class="scenario-sep"></div>
+  <input id="scenario-name" placeholder="New scenario name…" style="font-size:13px" onkeydown="if(event.key==='Enter')saveScenario()">
+  <button class="btn btn-primary" onclick="saveScenario()">Save</button>
+  <span class="autosave-hint" id="autosave-hint">Auto-saved</span>
+</div>
+
+<div class="grid">
+  <div>
+    <div class="card">
+      <h2>Current Pod Roster <span class="badge badge-slate" id="staff-count-badge">4 people</span></h2>
+      <div class="staff-grid header-row-grid"><div>Name</div><div>Role</div><div>Market</div><div>Salary</div><div>Hrs/Wk</div><div>PT</div><div></div></div>
+      <div id="staff-list"></div>
+      <div id="payroll-breakout" style="margin-top:14px;padding:12px 14px;border-radius:8px;background:#fafbfc;border:1px solid var(--border);font-size:13px"></div>
+      <button class="btn btn-primary btn-full" style="margin-top:14px" onclick="addStaff()">+ Add Staff Member</button>
+    </div>
+
+    <div class="card">
+      <h2>Accounts <span class="badge badge-slate" id="acct-count-badge">0A / 0B</span></h2>
+      <div id="acct-list"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="addAccount('A')">+ A-Tier Account</button>
+        <button class="btn btn-secondary" onclick="addAccount('B')">+ B-Tier Account</button>
+      </div>
+    </div>
+
+    <div class="card card-ref">
+      <h3>Reference: Current-State Workload</h3>
+      <div class="ref-content">
+        A-Tier: <strong>35 total working hrs/week</strong> per account<br>
+        B-Tier: <strong>18 total working hrs/week</strong> per account<br>
+        Min staff per account: <strong>3</strong> (4th staff slot optional)<br>
+        P2R target: <strong>65.0%</strong> · Max hours/person: <strong>40/wk</strong><br>
+        Payroll includes <strong>30% performance bonus</strong> tax · Part-time prorated by hrs/40
+      </div>
+    </div>
+    <div class="card card-ref">
+      <h3>Reference: Hour Allocation Splits</h3>
+      <table class="ref-table">
+        <thead><tr><th>Tier · Staff Count</th><th>Manager</th><th>Each Non-Mgr Staff</th></tr></thead>
+        <tbody>
+          <tr><td>A-Tier (35h) · 3 staff</td><td>40% · 14h</td><td>30% · 10.5h</td></tr>
+          <tr><td>A-Tier (35h) · 4 staff</td><td>32% · 11.2h</td><td>~22.7% · ~7.93h</td></tr>
+          <tr><td>B-Tier (18h) · 3 staff</td><td>20% · 3.6h</td><td>40% · 7.2h</td></tr>
+          <tr><td>B-Tier (18h) · 4 staff</td><td>16% · 2.88h</td><td>28% · ~5.04h</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Workload Summary</h2>
+      <div class="metrics-grid">
+        <div><span class="label">Weekly Hours Needed</span><div class="metric-big" id="out-hrs-needed">0h</div></div>
+        <div><span class="label">Available Hours</span><div class="metric-big" id="out-hrs-avail">0h</div></div>
+        <div><span class="label">Hours Used</span><div class="metric-med" id="out-hrs-used">0h</div></div>
+        <div><span class="label">Open Bandwidth</span><div class="metric-med" id="out-hrs-open">0h</div></div>
+      </div>
+      <div class="capacity-bar"><div class="capacity-fill" id="cap-fill" style="width:0%"></div></div>
+      <div class="capacity-label" id="cap-label">0% utilized</div>
+    </div>
+    <div class="card">
+      <h2>Financials</h2>
+      <div class="metrics-grid">
+        <div><span class="label">Monthly Fees</span><div class="metric-big" id="out-mo-fees">$0</div></div>
+        <div><span class="label">Annual Fees</span><div class="metric-big" id="out-yr-fees">$0</div></div>
+        <div><span class="label">Monthly Payroll</span><div class="metric-med" id="out-mo-pay">$0</div></div>
+        <div><span class="label">Annual Payroll</span><div class="metric-med" id="out-yr-pay">$0</div></div>
+      </div>
+      <div class="p2r-box" id="p2r-box">
+        <div><div class="label">Current P2R</div><div class="p2r-value" id="out-p2r">—</div></div>
+        <span class="badge" id="p2r-badge">No Fees</span>
+      </div>
+    </div>
+    <div class="card" id="hire-card">
+      <h2>Hiring Recommendations <span class="badge" id="hire-badge">Fully staffed</span></h2>
+      <div id="hire-content"></div>
+    </div>
+    <div class="manager-gap" id="mgr-gap" style="display:none"></div>
+  </div>
+</div>
+
+<div class="full-width">
+  <div class="card">
+    <h2>Staff Allocation <span class="badge badge-slate" id="alloc-badge">0 accounts</span></h2>
+    <div id="alloc-content"><p style="color:var(--text-secondary);font-size:13px">Add accounts to see bandwidth allocation.</p></div>
+  </div>
+</div>
+
+<script>
+const SALARY={
+  "Senior Manager":{NYC:125000,LATAM:null},
+  Manager:{NYC:100000,LATAM:null},
+  "Jr. Strategist":{NYC:70000,LATAM:15000},
+  Buyer:{NYC:70000,LATAM:15000}
+};
+const ALL_ROLES=["Senior Manager","Manager","Jr. Strategist","Buyer"];
+const WORKLOAD={A:35,B:18};
+// Manager percentage with 3 staff (1 mgr + 2 non-mgr)
+const MGR_PCT_3={A:.40,B:.20};
+const P2R_TARGET=.65;
+const BONUS_RATE=.30;
+const DEFAULT_HRS=40;
+const MIN_STAFF=3;
+
+let nextSid=5,nextAid=3;
+let staff=[
+  {id:1,name:"You",role:"Senior Manager",market:"NYC",isYou:true,partTime:false,hrsPerWeek:40},
+  {id:2,name:"Strategist 1",role:"Jr. Strategist",market:"NYC",isYou:false,partTime:false,hrsPerWeek:40},
+  {id:3,name:"Buyer 1",role:"Buyer",market:"LATAM",isYou:false,partTime:false,hrsPerWeek:40},
+  {id:4,name:"Buyer 2",role:"Buyer",market:"LATAM",isYou:false,partTime:false,hrsPerWeek:40}
+];
+let accounts=[
+  {id:1,name:"Account 1",tier:"A",fee:8000,assignments:{mgr:1,staff2:null,staff3:null,staff4:null}},
+  {id:2,name:"Account 2",tier:"B",fee:5000,assignments:{mgr:1,staff2:null,staff3:null,staff4:null}}
+];
+
+function fmt(n){return n.toLocaleString('en-US',{style:'currency',currency:'USD',minimumFractionDigits:0,maximumFractionDigits:0})}
+function pct(n){return(n*100).toFixed(1)+'%'}
+function sal(role,market){return SALARY[role]?.[market]||0}
+// Part-time prorated salary (base, no bonus)
+function proratedSal(p){return sal(p.role,p.market)*(getMaxHrs(p)/DEFAULT_HRS)}
+function proratedSalBonus(p){return proratedSal(p)*(1+BONUS_RATE)}
+function isMgr(p){return p.role==='Senior Manager'||p.role==='Manager'}
+function mktOpts(role){return(role==="Senior Manager"||role==="Manager")?["NYC"]:["NYC","LATAM"]}
+function staffLabel(p){return p.name||p.role}
+function getStaffById(id){return staff.find(s=>s.id===id)||null}
+function getMaxHrs(p){return p.partTime?p.hrsPerWeek:DEFAULT_HRS}
+
+// Compute hour split for an account based on # of non-manager staff assigned (2 or 3)
+function getAcctHours(tier, nonMgrCount){
+  const total=WORKLOAD[tier];
+  const mgrPct3=MGR_PCT_3[tier];
+  if(nonMgrCount>=3){
+    // 4 staff total: manager pct reduced by 20%
+    const mgrPct=mgrPct3*0.8;
+    const mgrH=total*mgrPct;
+    const remaining=total-mgrH;
+    const staffH=remaining/3;
+    return {mgr:mgrH, staff:staffH};
+  } else {
+    // 3 staff total (or fewer): default split
+    const mgrH=total*mgrPct3;
+    const remaining=total-mgrH;
+    // If only 2 non-mgr slots, split between them; if 1, all goes to that one; if 0, no extra distribution
+    const staffH=nonMgrCount>0?remaining/Math.max(2,nonMgrCount):0;
+    return {mgr:mgrH, staff:staffH};
+  }
+}
+
+// Count how many non-manager staff slots are filled on an account
+function countNonMgrAssigned(a){
+  let n=0;
+  if(a.assignments.staff2)n++;
+  if(a.assignments.staff3)n++;
+  if(a.assignments.staff4)n++;
+  return n;
+}
+
+function renderStaff(){
+  const el=document.getElementById('staff-list');el.innerHTML='';
+  staff.forEach(p=>{
+    const row=document.createElement('div');row.className='staff-grid';
+    const mkts=mktOpts(p.role);
+    const ptChecked=p.partTime?'checked':'';
+    const hrsField=p.partTime?`<input type="number" value="${p.hrsPerWeek}" min="1" max="40" style="width:50px;padding:4px 6px;font-size:12px" onchange="updateStaff(${p.id},'hrsPerWeek',+this.value)">`:`<span style="font-size:12px;color:var(--text-muted)">40</span>`;
+    const proSal=proratedSal(p);
+    const salDisplay=p.partTime?`${fmt(proSal)} <span style="color:var(--text-muted);font-size:10px">(PT)</span>`:fmt(sal(p.role,p.market));
+
+    if(p.isYou){
+      row.innerHTML=`
+        <input value="${p.name}" onchange="updateStaff(${p.id},'name',this.value)" style="font-weight:600">
+        <div class="static-field" style="font-size:12px">Sr. Manager</div>
+        <div class="static-field-muted" style="font-size:12px">NYC</div>
+        <div class="salary-hint">${salDisplay}</div>
+        <div style="text-align:center">${hrsField}</div>
+        <label class="pt-toggle"><input type="checkbox" ${ptChecked} onchange="updateStaff(${p.id},'partTime',this.checked)"></label>
+        <div></div>`;
+    } else {
+      row.innerHTML=`
+        <input value="${p.name}" onchange="updateStaff(${p.id},'name',this.value)" placeholder="Name">
+        <select onchange="updateStaff(${p.id},'role',this.value)" style="font-size:12px">${ALL_ROLES.map(r=>`<option value="${r}"${r===p.role?' selected':''}>${r}</option>`).join('')}</select>
+        <select onchange="updateStaff(${p.id},'market',this.value)" style="font-size:12px">${mkts.map(m=>`<option value="${m}"${m===p.market?' selected':''}>${m}</option>`).join('')}</select>
+        <div class="salary-hint">${salDisplay}</div>
+        <div style="text-align:center">${hrsField}</div>
+        <label class="pt-toggle"><input type="checkbox" ${ptChecked} onchange="updateStaff(${p.id},'partTime',this.checked)"></label>
+        <button class="btn-danger" onclick="removeStaff(${p.id})">×</button>`;
+    }
+    el.appendChild(row);
+  });
+  // Payroll breakout — uses prorated salaries
+  const basePay=staff.reduce((s,p)=>s+proratedSal(p),0);
+  const bonus=basePay*BONUS_RATE;
+  const loaded=basePay+bonus;
+  document.getElementById('payroll-breakout').innerHTML=`
+    <div style="display:flex;justify-content:space-between;padding:4px 0"><span>Base Payroll <span style="color:var(--text-muted);font-size:11px">(part-time prorated)</span></span><strong>${fmt(basePay)}/yr</strong></div>
+    <div style="display:flex;justify-content:space-between;padding:4px 0;color:var(--text-secondary)"><span>+ 30% Performance Bonus</span><span>${fmt(bonus)}/yr</span></div>
+    <div style="border-top:2px solid var(--border);margin-top:6px;padding-top:6px;display:flex;justify-content:space-between;font-weight:700"><span>Loaded Payroll</span><span>${fmt(loaded)}/yr <span class="metric-hint">(${fmt(loaded/12)}/mo)</span></span></div>`;
+  document.getElementById('staff-count-badge').textContent=staff.length+' people';
+  renderAccounts();
+}
+
+function addStaff(){staff.push({id:nextSid++,name:'',role:"Buyer",market:"LATAM",isYou:false,partTime:false,hrsPerWeek:40});renderStaff();}
+function removeStaff(id){
+  staff=staff.filter(s=>s.id!==id);
+  accounts.forEach(a=>{
+    if(a.assignments.mgr===id)a.assignments.mgr=null;
+    if(a.assignments.staff2===id)a.assignments.staff2=null;
+    if(a.assignments.staff3===id)a.assignments.staff3=null;
+    if(a.assignments.staff4===id)a.assignments.staff4=null;
+  });
+  renderStaff();
+}
+function updateStaff(id,field,val){
+  const p=staff.find(s=>s.id===id);if(!p)return;
+  p[field]=val;
+  if(field==='role'){const o=mktOpts(val);if(!o.includes(p.market))p.market=o[0];}
+  if(field==='partTime'&&!val)p.hrsPerWeek=DEFAULT_HRS;
+  if(field==='hrsPerWeek')p.hrsPerWeek=Math.max(1,Math.min(40,+val));
+  renderStaff();
+}
+function addHireToPod(role,market){staff.push({id:nextSid++,name:'',role,market,isYou:false,partTime:false,hrsPerWeek:40});renderStaff();}
+function addAllHiresToPod(){if(!window._currentHires)return;window._currentHires.forEach(h=>staff.push({id:nextSid++,name:'',role:h.role,market:h.market,isYou:false,partTime:false,hrsPerWeek:40}));renderStaff();}
+
+// ─── ACCOUNTS: renderAccounts only triggers on add/remove/staff-change. ───
+// ─── Field updates (name/fee/tier/assignment) update data + recalc only ──
+function renderAccounts(){
+  const el=document.getElementById('acct-list');el.innerHTML='';
+  const managers=staff.filter(p=>isMgr(p));
+  const allStaff=staff;
+
+  accounts.forEach(a=>{
+    const card=document.createElement('div');card.className='acct-card';card.id='acct-card-'+a.id;
+    const t=a.tier;
+    const nonMgrCount=countNonMgrAssigned(a);
+    const hrs=getAcctHours(t, nonMgrCount);
+    const mgrHrsLabel=hrs.mgr.toFixed(2);
+    const staffHrsLabel=hrs.staff.toFixed(2);
+
+    let html=`<div class="acct-card-header">
+      <input value="${a.name}" oninput="updateAccount(${a.id},'name',this.value,false)" placeholder="Account name" style="font-weight:600">
+      <select onchange="updateAccount(${a.id},'tier',this.value,true)" style="font-size:12px"><option value="A"${t==='A'?' selected':''}>A Tier</option><option value="B"${t==='B'?' selected':''}>B Tier</option></select>
+      <div class="fee-wrap"><span class="dollar">$</span><input type="number" value="${a.fee}" oninput="updateAccount(${a.id},'fee',this.value,false)" placeholder="Fee"></div>
+      <button class="btn-danger" onclick="removeAccount(${a.id})">×</button>
+    </div>`;
+
+    html+=`<div class="acct-assign-row">
+      <div class="assign-label">Manager<br><span style="font-weight:400;text-transform:none;font-size:10px;color:var(--text-muted)">${mgrHrsLabel} hrs/wk</span></div>
+      <select onchange="updateAssignment(${a.id},'mgr',+this.value||null)" style="font-size:12px">
+        <option value="">— Unassigned —</option>
+        ${managers.map(m=>`<option value="${m.id}"${a.assignments.mgr===m.id?' selected':''}>${staffLabel(m)} (${m.market})</option>`).join('')}
+      </select><div></div>
+    </div>`;
+
+    ['staff2','staff3','staff4'].forEach((slot,idx)=>{
+      const num=idx+2;
+      const optional=slot==='staff4'?' <span style="font-size:10px;color:var(--text-muted)">(optional)</span>':'';
+      html+=`<div class="acct-assign-row">
+        <div class="assign-label">Staff #${num}${optional}<br><span style="font-weight:400;text-transform:none;font-size:10px;color:var(--text-muted)">${staffHrsLabel} hrs/wk</span></div>
+        <select onchange="updateAssignment(${a.id},'${slot}',+this.value||null)" style="font-size:12px">
+          <option value="">— Unassigned —</option>
+          ${allStaff.map(s=>`<option value="${s.id}"${a.assignments[slot]===s.id?' selected':''}>${staffLabel(s)} (${s.role}, ${s.market})</option>`).join('')}
+        </select><div></div>
+      </div>`;
+    });
+
+    card.innerHTML=html;
+    el.appendChild(card);
+  });
+
+  const aC=accounts.filter(a=>a.tier==='A').length,bC=accounts.filter(a=>a.tier==='B').length;
+  document.getElementById('acct-count-badge').textContent=aC+'A / '+bC+'B';
+  recalc();
+}
+
+function addAccount(tier){
+  accounts.push({id:nextAid++,name:'Account '+(nextAid-1),tier,fee:tier==='A'?8000:5000,assignments:{mgr:null,staff2:null,staff3:null,staff4:null}});
+  renderAccounts();
+}
+function removeAccount(id){accounts=accounts.filter(a=>a.id!==id);renderAccounts();}
+
+// updateAccount: silently update data; only re-render the section if structure changes (tier flips header counts)
+function updateAccount(id,field,val,fullRender){
+  const a=accounts.find(x=>x.id===id);if(!a)return;
+  if(field==='fee')a[field]=parseFloat(val)||0;else a[field]=val;
+  if(fullRender){
+    renderAccounts();
+  } else {
+    // Update tier badge counts even on silent updates (no-op for fee/name)
+    if(field==='tier'){
+      const aC=accounts.filter(a=>a.tier==='A').length,bC=accounts.filter(a=>a.tier==='B').length;
+      document.getElementById('acct-count-badge').textContent=aC+'A / '+bC+'B';
+    }
+    recalc();
+  }
+}
+
+function updateAssignment(acctId,slot,staffId){
+  const a=accounts.find(x=>x.id===acctId);if(!a)return;
+  a.assignments[slot]=staffId;
+  // Re-render this account card only (so the hours-per-slot labels update)
+  // Simpler: re-render all account cards. This is the only path that needs label updates.
+  renderAccounts();
+}
+
+function autoAllocate(){
+  const managers=staff.filter(p=>isMgr(p));
+  const nonManagers=staff.filter(p=>!isMgr(p));
+  const hrs={};staff.forEach(p=>hrs[p.id]=0);
+
+  accounts.forEach(a=>{
+    const t=a.tier;
+    // Default to 2 non-mgrs for hour calc; we'll recalc once allocated
+    const h=getAcctHours(t,2);
+
+    let best=null,bestOpen=-Infinity;
+    managers.forEach(m=>{const o=getMaxHrs(m)-hrs[m.id];if(o>bestOpen){bestOpen=o;best=m;}});
+    a.assignments.mgr=best?best.id:null;
+    if(best)hrs[best.id]+=h.mgr;
+
+    const sorted=[...nonManagers].sort((x,y)=>(getMaxHrs(y)-hrs[y.id])-(getMaxHrs(x)-hrs[x.id]));
+    a.assignments.staff2=sorted[0]?sorted[0].id:null;
+    if(sorted[0])hrs[sorted[0].id]+=h.staff;
+    a.assignments.staff3=sorted[1]?sorted[1].id:null;
+    if(sorted[1])hrs[sorted[1].id]+=h.staff;
+    a.assignments.staff4=null;
+  });
+  renderAccounts();
+}
+
+function computeAllocation(){
+  const hrs={};staff.forEach(p=>hrs[p.id]=0);
+  const accts={};staff.forEach(p=>accts[p.id]=[]);
+  const warnings=[];
+
+  accounts.forEach(a=>{
+    const t=a.tier;
+    const nonMgrCount=countNonMgrAssigned(a);
+    const h=getAcctHours(t,nonMgrCount);
+    let assigned=0;
+
+    if(a.assignments.mgr){
+      const p=getStaffById(a.assignments.mgr);
+      if(p){hrs[p.id]+=h.mgr;accts[p.id].push({name:a.name,tier:t,hours:h.mgr,role:'Manager'});assigned++;
+        if(hrs[p.id]>getMaxHrs(p)+.01)warnings.push(`${staffLabel(p)} over ${getMaxHrs(p)}h/wk after "${a.name}"`);
+      }
+    } else {warnings.push(`No manager assigned to "${a.name}"`);}
+
+    [['staff2','#2'],['staff3','#3'],['staff4','#4']].forEach(([slot,num])=>{
+      const sid=a.assignments[slot];
+      if(sid){
+        const p=getStaffById(sid);
+        if(p){hrs[p.id]+=h.staff;accts[p.id].push({name:a.name,tier:t,hours:h.staff,role:'Staff '+num});assigned++;
+          if(hrs[p.id]>getMaxHrs(p)+.01)warnings.push(`${staffLabel(p)} over ${getMaxHrs(p)}h/wk after "${a.name}"`);
+        }
+      }
+    });
+
+    if(assigned<MIN_STAFF)warnings.push(`Only ${assigned}/3 staff assigned to "${a.name}" (minimum is 3)`);
+  });
+
+  return{
+    people:staff.map(p=>({id:p.id,label:staffLabel(p),market:p.market,isManager:isMgr(p),accounts:accts[p.id],totalHrs:Math.round(hrs[p.id]*100)/100,capacity:getMaxHrs(p),overCapacity:hrs[p.id]>getMaxHrs(p)+.01,partTime:p.partTime})),
+    warnings
+  };
+}
+
+function renderAllocation(alloc){
+  const el=document.getElementById('alloc-content');
+  document.getElementById('alloc-badge').textContent=accounts.length+' accounts';
+  if(!accounts.length){el.innerHTML='<p style="color:var(--text-secondary);font-size:13px">Add accounts to see bandwidth allocation.</p>';return;}
+
+  let html=`<div style="margin-bottom:12px"><button class="btn btn-outline" onclick="autoAllocate()" style="font-size:12px">⚡ Auto-Allocate Unassigned</button></div>`;
+  html+='<table class="alloc-table"><thead><tr><th>Person / Account</th><th>Role on Acct</th><th>Hrs/Wk</th><th class="bar-cell">Bandwidth</th><th>Status</th></tr></thead><tbody>';
+
+  alloc.people.forEach(p=>{
+    const util=p.capacity>0?p.totalHrs/p.capacity:0;
+    const barColor=p.overCapacity?'#ef4444':util>.85?'#f59e0b':'#22c55e';
+    const dotClass=p.overCapacity?'dot-red':util>.85?'dot-amber':'dot-green';
+    const statusText=p.overCapacity?'Over capacity':util>.85?'Near capacity':'Available';
+    const openHrs=Math.round((p.capacity-p.totalHrs)*10)/10;
+    const ptBadge=p.partTime?` <span class="badge badge-amber" style="font-size:10px;padding:1px 6px">PT ${p.capacity}h</span>`:'';
+
+    html+=`<tr class="person-row">
+      <td><span class="badge ${p.isManager?'badge-blue':'badge-slate'}" style="margin-right:6px">${p.market}</span>${p.label}${ptBadge}</td>
+      <td></td><td><strong>${p.totalHrs.toFixed(2)}</strong> / ${p.capacity}h</td>
+      <td class="bar-cell"><div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.min(100,util*100)}%;background:${barColor}"></div></div></td>
+      <td><span class="status-dot ${dotClass}"></span>${statusText} <span class="metric-hint">(${openHrs}h open)</span></td></tr>`;
+
+    p.accounts.forEach(a=>{
+      html+=`<tr><td class="acct-cell">${a.name} <span class="badge ${a.tier==='A'?'badge-amber':'badge-slate'}" style="font-size:10px;padding:1px 6px">${a.tier}</span></td>
+        <td style="font-size:12px;color:var(--text-secondary)">${a.role}</td><td>${a.hours.toFixed(2)}h</td><td></td><td></td></tr>`;
+    });
+    if(!p.accounts.length)html+=`<tr><td class="acct-cell" colspan="5" style="color:var(--text-muted);font-style:italic">No accounts assigned</td></tr>`;
+  });
+  html+='</tbody></table>';
+
+  if(alloc.warnings.length){
+    html+='<div style="margin-top:14px">';
+    alloc.warnings.forEach(w=>html+=`<div class="warning-box" style="margin-bottom:6px"><strong>⚠</strong> ${w}</div>`);
+    html+='</div>';
+  }
+  el.innerHTML=html;
+}
+
+function recalc(){
+  const aC=accounts.filter(a=>a.tier==='A').length,bC=accounts.filter(a=>a.tier==='B').length,total=accounts.length;
+  const hrsNeeded=aC*WORKLOAD.A+bC*WORKLOAD.B;
+  const moFees=accounts.reduce((s,a)=>s+(parseFloat(a.fee)||0),0),yrFees=moFees*12;
+  const staffCount=staff.length;
+  const availHrs=staff.reduce((s,p)=>s+getMaxHrs(p),0);
+  const openHrs=availHrs-hrsNeeded;
+  // Payroll uses PRORATED salaries for part-time
+  const yrPayroll=staff.reduce((s,p)=>s+proratedSalBonus(p),0),moPayroll=yrPayroll/12;
+  const p2r=moFees>0?moPayroll/moFees:0,withinP2R=p2r<=P2R_TARGET&&p2r>0;
+  const mgrCount=staff.filter(p=>isMgr(p)).length;
+
+  document.getElementById('out-hrs-needed').textContent=hrsNeeded.toFixed(1)+'h';
+  const availEl=document.getElementById('out-hrs-avail');availEl.textContent=availHrs+'h';availEl.style.color=openHrs<0?'var(--red)':'var(--green)';
+  document.getElementById('out-hrs-used').innerHTML=hrsNeeded.toFixed(1)+'h <span class="metric-hint">/ '+availHrs+'h</span>';
+  const openEl=document.getElementById('out-hrs-open');openEl.textContent=openHrs.toFixed(1)+'h';openEl.style.color=openHrs<0?'var(--red)':'var(--green)';
+  if(openHrs<0)openEl.innerHTML=openHrs.toFixed(1)+'h <span class="metric-hint">(over capacity!)</span>';
+  const util=availHrs>0?hrsNeeded/availHrs:0;
+  document.getElementById('cap-fill').style.width=Math.min(100,util*100)+'%';
+  document.getElementById('cap-fill').style.background=openHrs<0?'#ef4444':openHrs<10?'#f59e0b':'#22c55e';
+  document.getElementById('cap-label').textContent=pct(util)+' utilized';
+
+  document.getElementById('out-mo-fees').textContent=fmt(moFees);document.getElementById('out-yr-fees').textContent=fmt(yrFees);
+  document.getElementById('out-mo-pay').textContent=fmt(moPayroll);document.getElementById('out-yr-pay').textContent=fmt(yrPayroll);
+  const p2rBox=document.getElementById('p2r-box'),p2rVal=document.getElementById('out-p2r'),p2rBadge=document.getElementById('p2r-badge');
+  p2rVal.textContent=moFees>0?pct(p2r):'—';
+  if(withinP2R){p2rBox.style.background='var(--green-bg)';p2rBox.style.border='1px solid var(--green-border)';p2rVal.style.color='var(--green)';p2rBadge.className='badge badge-green';p2rBadge.textContent='Within Target';}
+  else if(moFees>0){p2rBox.style.background='var(--red-bg)';p2rBox.style.border='1px solid var(--red-border)';p2rVal.style.color='var(--red)';p2rBadge.className='badge badge-red';p2rBadge.textContent='Over Target';}
+  else{p2rBox.style.background='var(--slate-bg)';p2rBox.style.border='1px solid var(--slate-border)';p2rVal.style.color='var(--text-secondary)';p2rBadge.className='badge badge-slate';p2rBadge.textContent='No Fees';}
+
+  // Manager hour requirement (assume 3-staff baseline split for hiring math)
+  const totalMgrHrs=aC*WORKLOAD.A*MGR_PCT_3.A+bC*WORKLOAD.B*MGR_PCT_3.B;
+  const mgrCap=staff.filter(p=>isMgr(p)).reduce((s,p)=>s+getMaxHrs(p),0);
+  const mgrOverflow=Math.max(0,totalMgrHrs-mgrCap);
+
+  const totalNonMgrHrs=hrsNeeded-totalMgrHrs;
+  const nonMgrCap=staff.filter(p=>!isMgr(p)).reduce((s,p)=>s+getMaxHrs(p),0);
+  const nonMgrOverflow=Math.max(0,totalNonMgrHrs-nonMgrCap);
+
+  let hires=[],budgetLeft=yrFees*P2R_TARGET-yrPayroll;
+  const extraMgrs=mgrOverflow>0?Math.ceil(mgrOverflow/DEFAULT_HRS):0;
+  for(let i=0;i<extraMgrs;i++){const s=SALARY.Manager.NYC*(1+BONUS_RATE);hires.push({role:'Manager',market:'NYC',salary:s,over:budgetLeft<s});budgetLeft-=s;}
+  let remNM=nonMgrOverflow;
+  while(remNM>0){const c=SALARY.Buyer.LATAM*(1+BONUS_RATE);hires.push({role:'Buyer',market:'LATAM',salary:c,over:budgetLeft<c});budgetLeft-=c;remNM-=DEFAULT_HRS;}
+  let proj=staffCount+hires.length;const minP=total>0?Math.max(MIN_STAFF,Math.ceil(hrsNeeded/DEFAULT_HRS)):0;
+  while(proj<minP){const c=SALARY.Buyer.LATAM*(1+BONUS_RATE);hires.push({role:'Buyer',market:'LATAM',salary:c,over:budgetLeft<c});budgetLeft-=c;proj++;}
+
+  const hireBadge=document.getElementById('hire-badge'),hireContent=document.getElementById('hire-content');
+  if(!hires.length){
+    hireBadge.className='badge badge-green';hireBadge.textContent='Fully staffed';
+    hireContent.innerHTML='<p style="color:var(--text-secondary);font-size:13px">Current pod can handle the workload within capacity and P2R constraints.</p>';
+    document.getElementById('hire-card').style.border='1px solid var(--border)';document.getElementById('hire-card').style.background='#fff';
+  } else {
+    hireBadge.className='badge badge-amber';hireBadge.textContent=hires.length+' needed';
+    document.getElementById('hire-card').style.border='1px solid var(--amber-border)';document.getElementById('hire-card').style.background='#fffdf5';
+    const newPay=hires.reduce((s,h)=>s+h.salary,0),projYrPay=yrPayroll+newPay,projMoPay=projYrPay/12;
+    const projP2R=moFees>0?projMoPay/moFees:0,projStaff=staffCount+hires.length,projHrs=availHrs+hires.length*DEFAULT_HRS,hireBudget=yrFees*P2R_TARGET-yrPayroll;
+    let html='';
+    hires.forEach(h=>{const bg=h.over?'var(--red-bg)':'var(--slate-bg)';const mb=h.market==='NYC'?'badge-blue':'badge-slate';
+      html+=`<div class="hire-item" style="background:${bg}"><div class="hire-item-left"><span>${h.role}</span><span class="badge ${mb}">${h.market}</span></div>
+        <div class="hire-item-right"><span>${fmt(h.salary)}/yr${h.over?'<span class="over">exceeds budget</span>':''}</span>
+        <button class="btn btn-primary" style="padding:4px 10px;font-size:11px" onclick="addHireToPod('${h.role}','${h.market}')">+ Add to Pod</button></div></div>`;
+    });
+    html+=`<div style="text-align:right;margin-bottom:10px"><button class="btn btn-primary" style="font-size:12px" onclick="addAllHiresToPod()">+ Add All to Pod</button></div>`;
+    html+=`<div class="proj-grid"><div><span class="label">Projected Staff</span><div class="metric-sm">${projStaff} people</div></div><div><span class="label">Projected Hours</span><div class="metric-sm">${projHrs}h/wk</div></div><div><span class="label">Projected Payroll</span><div class="metric-sm">${fmt(projMoPay)}/mo</div></div><div><span class="label">Projected P2R</span><div class="metric-sm" style="color:${projP2R<=P2R_TARGET?'var(--green)':'var(--red)'}">${moFees>0?pct(projP2R):'—'}</div></div></div>`;
+    if(hireBudget<newPay)html+=`<div class="warning-box"><strong>Warning:</strong> New hire payroll (${fmt(newPay)}/yr) exceeds P2R hiring budget (${fmt(Math.max(0,hireBudget))}/yr). You'll need to increase fees or adjust staffing to hit the 65% target.</div>`;
+    hireContent.innerHTML=html;
+    window._currentHires=hires.map(h=>({role:h.role,market:h.market}));
+  }
+
+  const mgrGap=document.getElementById('mgr-gap');
+  if(mgrOverflow>0){mgrGap.style.display='block';mgrGap.innerHTML=`<strong>Manager bandwidth gap:</strong> ${mgrCount} manager(s) have ${mgrCap}h/wk capacity, but accounts require ${totalMgrHrs.toFixed(1)}h/wk of manager time. ${extraMgrs} additional manager(s) needed.`;}
+  else if(!mgrCount&&total>0){mgrGap.style.display='block';mgrGap.innerHTML=`<strong>Manager gap:</strong> No managers on the pod. At least 1 manager is required.`;}
+  else{mgrGap.style.display='none';}
+
+  renderAllocation(computeAllocation());
+}
+
+const SK='launchpod_scenarios',AK='launchpod_autosave';
+function getScenarios(){try{return JSON.parse(localStorage.getItem(SK))||{}}catch(e){return{}}}
+function setScenarios(o){localStorage.setItem(SK,JSON.stringify(o))}
+function currentState(){return{staff:JSON.parse(JSON.stringify(staff)),accounts:JSON.parse(JSON.stringify(accounts)),nextSid,nextAid}}
+function migrateState(){
+  staff.forEach(p=>{if(p.partTime===undefined)p.partTime=false;if(p.hrsPerWeek===undefined)p.hrsPerWeek=40;if(p.name===undefined)p.name='';});
+  accounts.forEach(a=>{if(!a.assignments)a.assignments={mgr:null,staff2:null,staff3:null,staff4:null};if(a.assignments.staff4===undefined)a.assignments.staff4=null;});
+}
+function applyState(st){
+  staff=st.staff||[];accounts=st.accounts||[];
+  migrateState();
+  nextSid=st.nextSid||(Math.max(0,...staff.map(s=>s.id))+1);
+  nextAid=st.nextAid||(Math.max(0,...accounts.map(a=>a.id))+1);
+  renderStaff();
+}
+function refreshScenarioDropdown(sel){
+  const el=document.getElementById('scenario-select');const sc=getScenarios();const names=Object.keys(sc).sort();
+  el.innerHTML='<option value="">— Select saved scenario —</option>';
+  names.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;if(n===sel)o.selected=true;el.appendChild(o);});
+}
+function saveScenario(){
+  const inp=document.getElementById('scenario-name');let name=inp.value.trim();
+  if(!name){name=document.getElementById('scenario-select').value;if(!name){inp.focus();inp.style.borderColor='var(--red)';setTimeout(()=>inp.style.borderColor='',1500);return;}}
+  const sc=getScenarios();sc[name]=currentState();setScenarios(sc);inp.value='';refreshScenarioDropdown(name);showHint('Saved "'+name+'"');
+}
+function loadScenario(name){if(!name)return;const sc=getScenarios();if(!sc[name])return;applyState(sc[name]);showHint('Loaded "'+name+'"');}
+function deleteScenario(){
+  const name=document.getElementById('scenario-select').value;if(!name)return;if(!confirm('Delete "'+name+'"?'))return;
+  const sc=getScenarios();delete sc[name];setScenarios(sc);refreshScenarioDropdown('');showHint('Deleted "'+name+'"');
+}
+const _origRecalc=recalc;
+recalc=function(){_origRecalc.apply(this,arguments);try{localStorage.setItem(AK,JSON.stringify(currentState()))}catch(e){}showHint('Auto-saved');}
+function showHint(msg){const h=document.getElementById('autosave-hint');h.textContent=msg;h.style.opacity=1;clearTimeout(h._t);h._t=setTimeout(()=>h.style.opacity=.5,2000);}
+
+try{const s=localStorage.getItem(AK);if(s){const st=JSON.parse(s);if(st&&st.staff&&st.accounts){
+  staff=st.staff;accounts=st.accounts;migrateState();
+  nextSid=st.nextSid||(Math.max(0,...staff.map(s=>s.id))+1);
+  nextAid=st.nextAid||(Math.max(0,...accounts.map(a=>a.id))+1);
+}}}catch(e){}
+refreshScenarioDropdown('');
+renderStaff();
+</script>
+</body>
+</html>
