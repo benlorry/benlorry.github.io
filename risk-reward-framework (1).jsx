@@ -1,0 +1,1913 @@
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+
+// ─── BENCHMARK DATA BANK ───
+const CHANNELS = {
+  podcast: {
+    label: "Podcast",
+    variants: {
+      host_read_midroll: {
+        label: "Host-Read Mid-Roll",
+        cpm: 35,
+        siteVisitRate: 0.45,
+        conversionRate: 6.0,
+        recallRate: 86,
+        brandedSearchLift: { low: 8, mid: 15, high: 25 },
+        source: "Podscribe Q1 2026 · 97K campaigns / 30B impressions",
+        attribution: "Vanity URL + post-purchase survey + pixel-based attribution",
+        attributionWindow: "60-day",
+        productionNote: "Minimal — host creates the read. Budget for landing page if needed.",
+      },
+      host_read_preroll: {
+        label: "Host-Read Pre-Roll",
+        cpm: 25,
+        siteVisitRate: 0.35,
+        conversionRate: 5.0,
+        recallRate: 82,
+        brandedSearchLift: { low: 6, mid: 12, high: 20 },
+        source: "Podscribe Q1 2026 · Acast 2026 effectiveness data",
+        attribution: "Vanity URL + promo code + pixel",
+        attributionWindow: "60-day",
+        productionNote: "Minimal — host creates the read.",
+      },
+      programmatic_midroll: {
+        label: "Programmatic Mid-Roll (DAI)",
+        cpm: 22,
+        siteVisitRate: 0.25,
+        conversionRate: 4.0,
+        recallRate: 72,
+        brandedSearchLift: { low: 4, mid: 8, high: 14 },
+        source: "Podscribe Q1 2026 · IAB 2.2 certified",
+        attribution: "Pixel-based attribution via Podscribe",
+        attributionWindow: "30-day",
+        productionNote: "Produced audio spot required (~$2K–$5K).",
+      },
+      sponsored_segment: {
+        label: "Sponsored Segment / Dedicated Episode",
+        cpm: 75,
+        siteVisitRate: 0.55,
+        conversionRate: 7.0,
+        recallRate: 90,
+        brandedSearchLift: { low: 12, mid: 22, high: 35 },
+        source: "Podscribe Q1 2026 · premium placement data (top-25% calibrated)",
+        attribution: "Vanity URL + promo code + post-purchase survey",
+        attributionWindow: "90-day",
+        productionNote: "May require co-produced content. Budget for scripting & review.",
+      },
+    },
+  },
+  ctv: {
+    label: "Connected TV / OTT",
+    variants: {
+      programmatic_standard: {
+        label: "Programmatic Standard",
+        cpm: 27,
+        siteVisitRate: 0.25,
+        conversionRate: 2.0,
+        recallRate: 84,
+        brandedSearchLift: { low: 8, mid: 15, high: 25 },
+        source: "Adwave 2026 · Innovid CTV Insights · Solomon Partners",
+        attribution: "Brand lift study + geo-holdout + search uplift",
+        attributionWindow: "90-day",
+        productionNote: "Produced :15 or :30 spot required ($5K–$30K).",
+      },
+      premium_targeted: {
+        label: "Premium / Targeted Inventory",
+        cpm: 50,
+        siteVisitRate: 0.4,
+        conversionRate: 2.5,
+        recallRate: 88,
+        brandedSearchLift: { low: 12, mid: 20, high: 32 },
+        source: "Simulmedia 2025 · MNTN performance data 2026",
+        attribution: "Brand lift study + geo-holdout + search uplift",
+        attributionWindow: "90-day",
+        productionNote: "Produced :15 or :30 spot required ($5K–$50K).",
+      },
+      live_sports: {
+        label: "Live Sports / Premium Events",
+        cpm: 60,
+        siteVisitRate: 0.5,
+        conversionRate: 3.0,
+        recallRate: 92,
+        brandedSearchLift: { low: 15, mid: 25, high: 40 },
+        source: "Keynes Digital 2025 · Teads CTV performance benchmarks",
+        attribution: "Brand lift study + geo-holdout + search uplift",
+        attributionWindow: "90-day",
+        productionNote: "Premium produced spot required ($15K–$50K+).",
+      },
+    },
+  },
+  influencer: {
+    label: "Influencer / Creator",
+    variants: {
+      nano_micro: {
+        label: "Nano / Micro (1K–100K)",
+        cpm: 15,
+        siteVisitRate: 1.0,
+        conversionRate: 2.5,
+        recallRate: 65,
+        brandedSearchLift: { low: 3, mid: 6, high: 12 },
+        source: "Influencer Marketing Hub 2026 · Influee 2026 brand-paid rates · cold-traffic calibrated",
+        attribution: "UTM links + promo codes + affiliate tracking",
+        attributionWindow: "30-day",
+        productionNote: "Product seeding + creative brief. Creator produces content.",
+      },
+      mid_tier: {
+        label: "Mid-Tier (100K–500K)",
+        cpm: 25,
+        siteVisitRate: 0.9,
+        conversionRate: 2.5,
+        recallRate: 70,
+        brandedSearchLift: { low: 5, mid: 10, high: 18 },
+        source: "Influencer Marketing Hub 2026 Benchmark Report",
+        attribution: "UTM links + promo codes + affiliate tracking",
+        attributionWindow: "30-day",
+        productionNote: "Negotiate usage rights for paid amplification.",
+      },
+      macro_mega: {
+        label: "Macro / Mega (500K+)",
+        cpm: 55,
+        siteVisitRate: 0.8,
+        conversionRate: 2.5,
+        recallRate: 78,
+        brandedSearchLift: { low: 10, mid: 18, high: 30 },
+        source: "Influencer Marketing Hub 2026 · Page One Formula 2026 · qualified-audience calibrated",
+        attribution: "UTM links + promo codes + brand lift survey",
+        attributionWindow: "30-day",
+        productionNote: "Full creative production. Budget for usage rights & amplification.",
+      },
+    },
+  },
+  youtube_sponsorship: {
+    label: "YouTube Sponsorship",
+    variants: {
+      finance_business: {
+        label: "Finance / Business Channel",
+        cpm: 55,
+        siteVisitRate: 1.2,
+        conversionRate: 3.0,
+        recallRate: 80,
+        brandedSearchLift: { low: 10, mid: 18, high: 30 },
+        source: "HubSpot 2025 Creator Economy Report · Tubular Labs",
+        attribution: "UTM links + promo codes + search uplift",
+        attributionWindow: "60-day",
+        productionNote: "Creator produces integration. Review script in advance.",
+      },
+      lifestyle_general: {
+        label: "Lifestyle / General",
+        cpm: 18,
+        siteVisitRate: 0.8,
+        conversionRate: 2.5,
+        recallRate: 72,
+        brandedSearchLift: { low: 5, mid: 10, high: 18 },
+        source: "Tubular Labs 2026 · Pixability cross-platform study",
+        attribution: "UTM links + promo codes + search uplift",
+        attributionWindow: "60-day",
+        productionNote: "Creator produces integration. Brief on key messaging.",
+      },
+      health_wellness: {
+        label: "Health / Wellness Channel",
+        cpm: 30,
+        siteVisitRate: 1.0,
+        conversionRate: 2.8,
+        recallRate: 76,
+        brandedSearchLift: { low: 8, mid: 15, high: 24 },
+        source: "Tubular Labs 2026 benchmark database",
+        attribution: "UTM links + promo codes + search uplift",
+        attributionWindow: "60-day",
+        productionNote: "Creator produces integration. Ensure compliance review.",
+      },
+    },
+  },
+  streaming_audio: {
+    label: "Streaming Audio (Spotify / Pandora)",
+    variants: {
+      standard_audio: {
+        label: "Standard Audio Ad",
+        cpm: 12,
+        siteVisitRate: 0.35,
+        conversionRate: 2.0,
+        recallRate: 72,
+        brandedSearchLift: { low: 4, mid: 8, high: 14 },
+        source: "Spotify 2025 Benchmark · Podscribe streaming data Q1 2026",
+        attribution: "Pixel tracking + click-through + post-listen search",
+        attributionWindow: "30-day",
+        productionNote: "Produced audio spot required (~$1K–$3K).",
+      },
+      video_takeover: {
+        label: "Video Takeover / Sponsored Session",
+        cpm: 28,
+        siteVisitRate: 0.6,
+        conversionRate: 2.5,
+        recallRate: 82,
+        brandedSearchLift: { low: 8, mid: 15, high: 24 },
+        source: "Spotify 2025 · premium format benchmarks",
+        attribution: "Pixel tracking + click-through + post-listen search",
+        attributionWindow: "30-day",
+        productionNote: "Video asset required ($3K–$10K).",
+      },
+    },
+  },
+  direct_mail: {
+    label: "Direct Mail",
+    variants: {
+      postcard_prospect: {
+        label: "Postcard — Prospect List",
+        cpm: 600,
+        siteVisitRate: 4.4,
+        conversionRate: 30.0,
+        recallRate: 84,
+        brandedSearchLift: { low: 5, mid: 10, high: 18 },
+        source: "ANA/DMA 2025 Response Rate Report · 4.4% prospect response",
+        attribution: "QR code + vanity URL + promo code",
+        attributionWindow: "4–6 weeks post-drop",
+        productionNote: "Design + print + postage. ~$0.50–$1.00/piece.",
+      },
+      letter_house: {
+        label: "Letter — House List",
+        cpm: 1800,
+        siteVisitRate: 7.0,
+        conversionRate: 45.0,
+        recallRate: 91,
+        brandedSearchLift: { low: 3, mid: 7, high: 12 },
+        source: "ANA/DMA 2025 · Lob State of Direct Mail · 5-9% house response",
+        attribution: "QR code + vanity URL + promo code + unique phone",
+        attributionWindow: "4–6 weeks post-drop",
+        productionNote: "Design + print + postage. ~$1.50–$3.00/piece.",
+      },
+      dimensional: {
+        label: "Dimensional / Premium Mailer",
+        cpm: 8000,
+        siteVisitRate: 12.0,
+        conversionRate: 50.0,
+        recallRate: 95,
+        brandedSearchLift: { low: 8, mid: 15, high: 25 },
+        source: "ANA/DMA 2025 · 12-15% video/dimensional response",
+        attribution: "QR code + vanity URL + promo code + unique phone",
+        attributionWindow: "4–6 weeks post-drop",
+        productionNote: "Premium production. $5–$25/piece. Low volume, high impact.",
+      },
+    },
+  },
+  ooh: {
+    label: "Out-of-Home / DOOH",
+    variants: {
+      bulletin_billboard: {
+        label: "Bulletin / Billboard",
+        cpm: 5,
+        siteVisitRate: 0.08,
+        conversionRate: 2.0,
+        recallRate: 86,
+        brandedSearchLift: { low: 15, mid: 28, high: 45 },
+        source: "Solomon Partners 2025 · OAAA-Harris Poll · OOH primarily drives recall + search",
+        attribution: "Search uplift + geo-holdout + QR code",
+        attributionWindow: "Campaign duration + 4 weeks",
+        productionNote: "Static creative. 4–12 week campaign typical.",
+      },
+      dooh_programmatic: {
+        label: "Digital OOH / Programmatic",
+        cpm: 15,
+        siteVisitRate: 0.12,
+        conversionRate: 2.0,
+        recallRate: 84,
+        brandedSearchLift: { low: 12, mid: 22, high: 35 },
+        source: "MAGNA 2025 · Solomon Partners · DOOH attribution data",
+        attribution: "Mobile location data + search uplift + QR code",
+        attributionWindow: "Campaign duration + 4 weeks",
+        productionNote: "Dynamic creative. Higher flexibility, shorter commitments.",
+      },
+    },
+  },
+};
+
+const BUSINESS_MODELS = [
+  { value: "subscription_dtc", label: "Subscription (DTC)" },
+  { value: "one_time_purchase", label: "One-Time Purchase" },
+  { value: "lead_gen", label: "Lead Gen → Sales" },
+  { value: "hybrid", label: "Hybrid (Subscription + One-Time)" },
+  { value: "omnichannel", label: "Omnichannel Retail" },
+];
+
+// Vertical-specific multipliers applied to channel-level benchmarks.
+// IMPORTANT: Channel benchmarks (Podscribe, Adwave, etc.) are calibrated against COLD creator/podcast/CTV
+// traffic for DTC consumer brands. These multipliers reflect how *other verticals* perform vs. that DTC
+// baseline ON THE SAME COLD CREATOR TRAFFIC — not vs. intent/landing-page traffic.
+//
+// Calibration sources:
+// - Shopify/IRP Commerce 2026: industry CVR benchmarks (beauty/supplements 4.9-6.2%, home/furniture 1.4-1.7%, luxury 0.5-1.3%)
+// - Martal/DigitalApplied 2026: paid social converts at 0.9% vs direct traffic 3.3% — cold creator audiences convert ~25-35% of intent traffic
+// - Varos/GrowthSpree 2026: B2B SaaS visitor-to-lead 1.5-2.5% on landing pages; cold creator audiences convert dramatically below that for B2B
+// - Influencer Marketing Hub 2026: creator content has 2-3x lower conversion in B2B vs DTC at equivalent reach
+//
+// Multipliers reflect relative *creator-traffic* performance across verticals. Pressure-tested
+// against real campaigns (Casper mattress, Gusto/Guideline, supplement DTC) to ensure outputs
+// land in defensible ranges that match historical CPL/CPA experience.
+const VERTICALS = [
+  { value: "dtc_consumer", label: "DTC Consumer (beauty, supplements, food, CPG)", siteVisitMult: 1.0, conversionMult: 1.0, note: "Beauty/supplements/food baseline. Creator audiences convert at native channel benchmarks." },
+  { value: "considered_home", label: "Considered Home / Big-Ticket DTC (mattress, tile, furniture)", siteVisitMult: 1.0, conversionMult: 0.20, note: "Home & furniture intent CVR ~1.4% vs. DTC ~5%. High-AOV considered purchases rarely close on first creator touch — most value is research/intent priming." },
+  { value: "apparel_fashion", label: "Apparel / Fashion", siteVisitMult: 1.0, conversionMult: 0.55, note: "Fashion CVR ~2-3%. Fit uncertainty caps direct response from creator content." },
+  { value: "healthcare_wellness", label: "Healthcare / Wellness Services (telehealth, mental health)", siteVisitMult: 0.85, conversionMult: 0.55, note: "Trust-driven category. Creator content drives consideration more than direct conversion." },
+  { value: "b2b_saas", label: "B2B SaaS / Software", siteVisitMult: 0.6, conversionMult: 0.20, note: "B2B audiences on creator content convert at a fraction of DTC. Most value is awareness for later intent capture." },
+  { value: "b2b_finserv", label: "B2B Financial Services (payroll, 401k, banking, insurance)", siteVisitMult: 0.4, conversionMult: 0.15, note: "Long sales cycles + regulated category. Creator content seeds awareness; direct lead capture is minimal." },
+  { value: "education_edtech", label: "Education / EdTech (courses, bootcamps, learning)", siteVisitMult: 0.85, conversionMult: 0.40, note: "Creator content drives strong consideration but tuition price points slow conversion." },
+  { value: "travel_hospitality", label: "Travel / Hospitality", siteVisitMult: 1.1, conversionMult: 0.45, note: "Strong creator content engagement. Booking decisions span weeks, suppressing direct conversion." },
+  { value: "auto_realestate", label: "Auto / Real Estate", siteVisitMult: 0.7, conversionMult: 0.10, note: "High-AOV considered purchase. Direct conversion from creator content is near-zero; brand value dominates." },
+  { value: "luxury_premium", label: "Luxury / Premium ($500+ AOV)", siteVisitMult: 0.9, conversionMult: 0.25, note: "Luxury intent CVR <1%. Creator content drives brand prestige; direct purchase is rare." },
+];
+
+const OUTCOME_TYPES = [
+  { value: "purchase", label: "Purchase" },
+  { value: "lead", label: "Lead" },
+  { value: "signup", label: "Sign-Up" },
+  { value: "booking", label: "Booking" },
+  { value: "install", label: "App Install" },
+];
+
+// Retention dropdown — capped at 12 months to match the tool's ROI horizon
+const RETENTION_OPTIONS = [
+  { value: "3", label: "3 months" },
+  { value: "6", label: "6 months" },
+  { value: "9", label: "9 months" },
+  { value: "12", label: "12 months (full horizon)" },
+];
+
+// Campaign duration dropdown — how long the upper-funnel campaign runs
+const CAMPAIGN_DURATION_OPTIONS = [
+  { value: "1", label: "1 month" },
+  { value: "2", label: "2 months" },
+  { value: "3", label: "3 months" },
+  { value: "4", label: "4 months" },
+  { value: "6", label: "6 months" },
+  { value: "9", label: "9 months" },
+  { value: "12", label: "12 months (always-on)" },
+];
+
+const fmt = (n) => {
+  if (n >= 1000000) return "$" + (n / 1000000).toFixed(1) + "M";
+  if (n >= 1000) return "$" + (n / 1000).toFixed(1) + "K";
+  return "$" + Math.round(n).toLocaleString();
+};
+const fmtN = (n) => {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
+  if (n >= 1000) return (n / 1000).toFixed(1) + "K";
+  return Math.round(n).toLocaleString();
+};
+const fmtPct = (n) => n.toFixed(1) + "%";
+
+// Cumulative revenue at month M, using the same curve shape as the payback chart
+// Curve: total LTV revenue accrues with frac^0.7 over the 12-month horizon
+// closeLag: months until first revenue (sales cycle for lead-gen models, 0 for purchase models)
+const cumRevAtMonth = (totalRev, m, horizon = 12, closeLag = 0) => {
+  // Revenue starts flowing at month closeLag+1; before that, $0 has been recognized
+  const effectiveMonth = Math.max(0, m - closeLag);
+  const effectiveHorizon = Math.max(1, horizon - closeLag);
+  const frac = Math.min(1, Math.max(0, effectiveMonth / effectiveHorizon));
+  return totalRev * Math.pow(frac, 0.7);
+};
+
+// ─── COMPONENTS ───
+
+function InputGroup({ label, hint, children, optional, equalHeight }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <label style={{ display: "block", fontSize: 12, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--label)", marginBottom: 5, minHeight: equalHeight ? 32 : "auto", lineHeight: 1.3 }}>
+        {label}
+        {optional && <span style={{ fontWeight: 400, textTransform: "none", opacity: 0.5, marginLeft: 6 }}>Optional</span>}
+      </label>
+      {children}
+      {hint && <div style={{ fontSize: 11, color: "var(--hint)", marginTop: 4, lineHeight: 1.4 }}>{hint}</div>}
+    </div>
+  );
+}
+
+function TextInput({ value, onChange, placeholder, prefix, type = "text" }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", background: "var(--input-bg)", border: "1px solid var(--input-border)", borderRadius: 6, overflow: "hidden" }}>
+      {prefix && <span style={{ padding: "8px 0 8px 12px", fontSize: 14, color: "var(--hint)", fontWeight: 500, flexShrink: 0 }}>{prefix}</span>}
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{ flex: 1, padding: prefix ? "8px 12px 8px 4px" : "8px 12px", border: "none", background: "transparent", fontSize: 14, color: "var(--text)", outline: "none", fontFamily: "inherit", width: "100%" }}
+      />
+    </div>
+  );
+}
+
+function Select({ value, onChange, options, placeholder }) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      style={{ width: "100%", padding: "8px 12px", background: "var(--input-bg)", border: "1px solid var(--input-border)", borderRadius: 6, fontSize: 14, color: value ? "var(--text)" : "var(--hint)", fontFamily: "inherit", outline: "none", cursor: "pointer", appearance: "auto" }}
+    >
+      <option value="">{placeholder || "Select..."}</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+    </select>
+  );
+}
+
+function ScenarioCard({ title, color, metrics, isEditing, onEdit, benchmarkSource }) {
+  const shade = color === "red" ? "#c0392b" : color === "green" ? "#27ae60" : "#2980b9";
+  const bgShade = color === "red" ? "rgba(192,57,43,0.06)" : color === "green" ? "rgba(39,174,96,0.06)" : "rgba(41,128,185,0.06)";
+  return (
+    <div style={{
+      flex: 1, minWidth: 200, background: bgShade, border: `1.5px solid ${shade}22`, borderRadius: 10, padding: 18, position: "relative",
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: shade, marginBottom: 14 }}>{title}</div>
+      {metrics.map((m, i) => (
+        <div key={i} style={{ marginBottom: i < metrics.length - 1 ? 12 : 0 }}>
+          <div style={{ fontSize: 11, color: "var(--hint)", marginBottom: 2 }}>{m.label}</div>
+          {m.editable && isEditing ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <input
+                type="number"
+                value={m.editValue}
+                onChange={(e) => onEdit(m.editKey, e.target.value)}
+                style={{ width: 70, padding: "3px 6px", border: `1px solid ${shade}44`, borderRadius: 4, background: "white", fontSize: 15, fontWeight: 700, color: shade, fontFamily: "inherit", outline: "none" }}
+                step="0.01"
+              />
+              <span style={{ fontSize: 12, color: "var(--hint)" }}>{m.editSuffix}</span>
+            </div>
+          ) : (
+            <div style={{ fontSize: 18, fontWeight: 700, color: shade, fontFamily: "'DM Mono', monospace" }}>{m.value}</div>
+          )}
+        </div>
+      ))}
+      {benchmarkSource && (
+        <div style={{ fontSize: 9.5, color: "var(--hint)", marginTop: 12, borderTop: "1px solid var(--input-border)", paddingTop: 8, lineHeight: 1.4 }}>
+          {benchmarkSource}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PAYBACK CHART ───
+function PaybackChart({ scenarios, totalInvestment, months = 12, closeLag = 0 }) {
+  const W = 580, H = 220, PL = 50, PR = 20, PT = 20, PB = 35;
+  const cw = W - PL - PR, ch = H - PT - PB;
+
+  const allVals = scenarios.flatMap(s => {
+    const arr = [];
+    // Source the 12-month total from byHorizon.m12 so the curve endpoint matches the
+    // Decision Tree's 12 Months tab and the Recommendation block exactly. Legacy
+    // ltvRevenueWithLift uses a different accounting model and would produce a
+    // visible mismatch between the curve endpoint and the headline numbers.
+    const totalRev = s.byHorizon?.m12?.totalRev ?? (s.ltvRevenueWithLift !== undefined ? s.ltvRevenueWithLift : s.ltvRevenue);
+    for (let m = 0; m <= months; m++) {
+      const cumRev = cumRevAtMonth(totalRev, m, months, closeLag);
+      arr.push(cumRev - totalInvestment);
+    }
+    return arr;
+  });
+  const minV = Math.min(0, ...allVals, -totalInvestment);
+  const maxV = Math.max(...allVals, totalInvestment * 0.5);
+  const range = maxV - minV || 1;
+
+  const toX = (m) => PL + (m / months) * cw;
+  const toY = (v) => PT + ch - ((v - minV) / range) * ch;
+  const zeroY = toY(0);
+
+  const colors = ["#c0392b", "#2980b9", "#27ae60"];
+  const labels = ["Conservative", "Expected", "Optimistic"];
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", maxWidth: 600, display: "block", margin: "0 auto" }}>
+      <defs>
+        <linearGradient id="profitZone" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#27ae60" stopOpacity="0.08" />
+          <stop offset="100%" stopColor="#27ae60" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {/* Grid */}
+      <line x1={PL} y1={zeroY} x2={W - PR} y2={zeroY} stroke="var(--text)" strokeWidth="1" strokeOpacity="0.2" />
+      <rect x={PL} y={PT} width={cw} height={Math.max(0, zeroY - PT)} fill="url(#profitZone)" />
+      {/* Month labels */}
+      {[0, 3, 6, 9, 12].map(m => (
+        <g key={m}>
+          <line x1={toX(m)} y1={PT} x2={toX(m)} y2={H - PB} stroke="var(--text)" strokeWidth="0.5" strokeOpacity="0.08" />
+          <text x={toX(m)} y={H - PB + 14} textAnchor="middle" fontSize="10" fill="var(--hint)" fontFamily="'DM Mono', monospace">M{m}</text>
+        </g>
+      ))}
+      {/* Y labels */}
+      {[minV, 0, maxV].map((v, i) => (
+        <text key={i} x={PL - 6} y={toY(v) + 3} textAnchor="end" fontSize="9" fill="var(--hint)" fontFamily="'DM Mono', monospace">{fmt(v)}</text>
+      ))}
+      <text x={PL - 6} y={zeroY + 3} textAnchor="end" fontSize="9" fill="var(--text)" fontWeight="600" fontFamily="'DM Mono', monospace">$0</text>
+      {/* Lines */}
+      {scenarios.map((s, si) => {
+        const points = [];
+        const totalRev = s.byHorizon?.m12?.totalRev ?? (s.ltvRevenueWithLift !== undefined ? s.ltvRevenueWithLift : s.ltvRevenue);
+        for (let m = 0; m <= months; m++) {
+          const cumRev = cumRevAtMonth(totalRev, m, months, closeLag);
+          points.push({ x: toX(m), y: toY(cumRev - totalInvestment) });
+        }
+        const d = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
+        return <path key={si} d={d} fill="none" stroke={colors[si]} strokeWidth="2" strokeLinecap="round" />;
+      })}
+      {/* Breakeven dots — calculated from same curve shape as the lines */}
+      {scenarios.map((s, si) => {
+        const totalRev = s.byHorizon?.m12?.totalRev ?? (s.ltvRevenueWithLift !== undefined ? s.ltvRevenueWithLift : s.ltvRevenue);
+        if (totalRev <= 0 || totalRev <= totalInvestment * 0.001) return null;
+        // Solve for the month where cumRevAtMonth(totalRev, m) = totalInvestment
+        // cumRev = totalRev * ((m - closeLag) / (horizon - closeLag))^0.7
+        // (totalInvestment / totalRev)^(1/0.7) = (m - closeLag) / (horizon - closeLag)
+        const ratio = totalInvestment / totalRev;
+        if (ratio > 1) return null; // Never breaks even within window
+        const beFrac = Math.pow(ratio, 1 / 0.7);
+        const beMonth = closeLag + beFrac * (months - closeLag);
+        if (beMonth > months) return null;
+        return <circle key={`be-${si}`} cx={toX(beMonth)} cy={zeroY} r="4" fill={colors[si]} stroke="white" strokeWidth="1.5" />;
+      })}
+      {/* Legend */}
+      {labels.map((l, i) => (
+        <g key={l} transform={`translate(${PL + i * 130}, ${H - 2})`}>
+          <line x1="0" y1="-4" x2="14" y2="-4" stroke={colors[i]} strokeWidth="2" />
+          <text x="18" y="0" fontSize="9" fill="var(--hint)">{l}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+// ─── DECISION TREE (SVG) ───
+function DecisionTree({ totalInvestment, impressions, scenarios, outcomeLabel, currentCostPer, existingChannelOutput, reallocationAmt, horizonKey = "m12" }) {
+  const W = 700, H = 340;
+  const colors = ["#c0392b", "#2980b9", "#27ae60"];
+  const labels = ["Conservative", "Expected", "Optimistic"];
+
+  const nodeW = 150, nodeH = 90;
+  const startX = 10, startY = H / 2 - 30;
+  const midX = 220, midY = startY;
+  const endXs = [440, 440, 440];
+  const endYs = [30, 130, 230];
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", maxWidth: 640, display: "block", margin: "0 auto" }}>
+      <defs>
+        <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+          <feDropShadow dx="0" dy="2" stdDeviation="4" floodOpacity="0.06" />
+        </filter>
+      </defs>
+      {/* Investment Node */}
+      <rect x={startX} y={startY} width={130} height={60} rx="8" fill="var(--card-bg)" stroke="var(--input-border)" strokeWidth="1" filter="url(#shadow)" />
+      <text x={startX + 65} y={startY + 20} textAnchor="middle" fontSize="9" fill="var(--hint)" fontWeight="600" letterSpacing="0.05em">TOTAL INVESTMENT</text>
+      <text x={startX + 65} y={startY + 42} textAnchor="middle" fontSize="18" fill="var(--text)" fontWeight="700" fontFamily="'DM Mono', monospace">{fmt(totalInvestment)}</text>
+
+      {/* Arrow to reach */}
+      <line x1={startX + 130} y1={startY + 30} x2={midX} y2={midY + 30} stroke="var(--text)" strokeWidth="1" strokeOpacity="0.15" markerEnd="url(#arrowhead)" />
+
+      {/* Reach Node */}
+      <rect x={midX} y={midY} width={130} height={60} rx="8" fill="var(--card-bg)" stroke="var(--input-border)" strokeWidth="1" filter="url(#shadow)" />
+      <text x={midX + 65} y={midY + 20} textAnchor="middle" fontSize="9" fill="var(--hint)" fontWeight="600" letterSpacing="0.05em">EST. REACH</text>
+      <text x={midX + 65} y={midY + 42} textAnchor="middle" fontSize="18" fill="var(--text)" fontWeight="700" fontFamily="'DM Mono', monospace">{fmtN(impressions)}</text>
+
+      {/* Branches */}
+      {scenarios.map((s, i) => {
+        const ex = endXs[i], ey = endYs[i];
+        // Pull the time-horizon-specific values if available; fall back to legacy total for safety
+        const horizonData = s.byHorizon ? s.byHorizon[horizonKey] : null;
+        const totalRev = horizonData ? horizonData.totalRev : (s.ltvRevenueWithLift !== undefined ? s.ltvRevenueWithLift : s.ltvRevenue);
+        const roi = horizonData ? horizonData.roi : ((totalRev - totalInvestment) / totalInvestment * 100);
+        const roiStr = roi >= 0 ? `+${Math.round(roi)}%` : `${Math.round(roi)}%`;
+        const totalOutcomes = s.outcomesWithLift !== undefined ? s.outcomesWithLift : s.outcomes;
+        const costPer = totalOutcomes > 0 ? totalInvestment / totalOutcomes : 0;
+        const hasLift = s.outcomesWithLift !== undefined && s.outcomesWithLift > s.outcomes;
+
+        return (
+          <g key={i}>
+            <path d={`M${midX + 130},${midY + 30} C${midX + 180},${midY + 30} ${ex - 40},${ey + nodeH / 2} ${ex},${ey + nodeH / 2}`} fill="none" stroke={colors[i]} strokeWidth="1.5" strokeOpacity="0.4" />
+            <rect x={ex} y={ey} width={nodeW} height={nodeH} rx="8" fill={`${colors[i]}08`} stroke={colors[i]} strokeWidth="1.5" strokeOpacity="0.3" filter="url(#shadow)" />
+            <text x={ex + nodeW / 2} y={ey + 16} textAnchor="middle" fontSize="9" fill={colors[i]} fontWeight="700" letterSpacing="0.06em">{labels[i].toUpperCase()}</text>
+            <text x={ex + nodeW / 2} y={ey + 38} textAnchor="middle" fontSize="20" fill={colors[i]} fontWeight="700" fontFamily="'DM Mono', monospace">{roiStr} ROI</text>
+            <text x={ex + nodeW / 2} y={ey + 55} textAnchor="middle" fontSize="10" fill="var(--hint)">
+              {fmtN(totalOutcomes)} {outcomeLabel}s{hasLift ? ` (incl. lift)` : ""}
+            </text>
+            <text x={ex + nodeW / 2} y={ey + 70} textAnchor="middle" fontSize="10" fill="var(--hint)">{fmt(costPer)} per {outcomeLabel}</text>
+            {/* Revenue badge */}
+            <text x={ex + nodeW + 8} y={ey + 36} fontSize="11" fill={colors[i]} fontWeight="700" fontFamily="'DM Mono', monospace">{fmt(totalRev)}</text>
+            <text x={ex + nodeW + 8} y={ey + 50} fontSize="9" fill="var(--hint)">Total Rev</text>
+          </g>
+        );
+      })}
+      <defs>
+        <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="var(--text)" fillOpacity="0.15" />
+        </marker>
+      </defs>
+    </svg>
+  );
+}
+
+
+// ─── MAIN APP ───
+export default function App() {
+  // Section 1 — Brand
+  const [brandName, setBrandName] = useState("");
+  const [businessModel, setBusinessModel] = useState("");
+  const [vertical, setVertical] = useState("");
+  const [firstPurchaseValue, setFirstPurchaseValue] = useState("");
+  const [mrr, setMrr] = useState("");
+  const [aov, setAov] = useState("");
+  const [ltvDirect, setLtvDirect] = useState("");
+  const [retentionMonths, setRetentionMonths] = useState("");
+  const [margin, setMargin] = useState("");
+  const [currentCostPer, setCurrentCostPer] = useState("");
+  const [outcomeType, setOutcomeType] = useState("purchase");
+
+  // Section 2 — Tactic
+  const [channel, setChannel] = useState("");
+  const [variant, setVariant] = useState("");
+  const [mediaCommitment, setMediaCommitment] = useState("");
+  const [productionCost, setProductionCost] = useState("");
+
+  // Section 3 — Scenarios (editable overrides)
+  const [overrideSiteVisit, setOverrideSiteVisit] = useState(null);
+  const [overrideConversion, setOverrideConversion] = useState(null);
+  // Conservative/optimistic multipliers: 0.65x / 1.45x produces ~5x worst-to-best spread,
+  // which is realistic for upper-funnel campaign uncertainty (vs. 12.5x with prior 0.5x/1.75x).
+  const [worstMultiplier] = useState(0.65);
+  const [bestMultiplier] = useState(1.45);
+
+  // Time-horizon view for the Decision Tree.
+  // Default to "m3" (3-month) so executives see the near-term, defensible ROI first
+  // rather than the full 12-month bundled-up number — which can read as opportunistic
+  // for subscription/LTV-heavy brands and undermine the credibility of the pitch.
+  const [decisionTreeHorizonKey, setDecisionTreeHorizonKey] = useState("m3");
+
+  // Time-horizon view for the Direct Response + Branded Search Lift table.
+  // Independent of the Decision Tree so an exec can hold both views in mind:
+  // "the decision tree shows the 3-month payback story" AND "the revenue breakdown shows
+  // the full 12-month picture" simultaneously. Defaults to "m12" since this table is the
+  // detailed cohort audit and benefits from showing the complete picture by default.
+  const [directResponseHorizonKey, setDirectResponseHorizonKey] = useState("m12");
+
+  // Scenario edits
+  const [worstSiteVisit, setWorstSiteVisit] = useState(null);
+  const [worstConversion, setWorstConversion] = useState(null);
+  const [bestSiteVisit, setBestSiteVisit] = useState(null);
+  const [bestConversion, setBestConversion] = useState(null);
+
+  // Section 4 — Budget context
+  const [reallocationAmt, setReallocationAmt] = useState("0");
+  const [existingChannelOutput, setExistingChannelOutput] = useState("");
+
+  // Lead-to-close rate (only used for lead_gen and hybrid models)
+  const [leadCloseRate, setLeadCloseRate] = useState("");
+  // Months to close — sales cycle lag for lead-gen models
+  const [monthsToClose, setMonthsToClose] = useState("");
+
+  // Section 5 — Branded Search Lift (optional)
+  const [brandedSearchSpend, setBrandedSearchSpend] = useState("");
+  const [brandedSearchCPL, setBrandedSearchCPL] = useState("");
+  // campaignDurationMonths now lives in Step 2 as an attribute of the Channel & Tactic
+  const [campaignDurationMonths, setCampaignDurationMonths] = useState("3");
+
+  // Step state
+  const [step, setStep] = useState(1);
+  const [showOutput, setShowOutput] = useState(false);
+
+  const isSubscription = businessModel === "subscription_dtc" || businessModel === "hybrid";
+  const isLeadGen = businessModel === "lead_gen";
+
+  const channelData = channel ? CHANNELS[channel] : null;
+  const variantData = channelData && variant ? channelData.variants[variant] : null;
+
+  const ltv = useMemo(() => {
+    if (ltvDirect) return parseFloat(ltvDirect);
+    if (isSubscription && mrr && retentionMonths) return parseFloat(mrr) * parseFloat(retentionMonths);
+    if (aov) return parseFloat(aov);
+    if (firstPurchaseValue) return parseFloat(firstPurchaseValue);
+    return 0;
+  }, [ltvDirect, isSubscription, mrr, retentionMonths, aov, firstPurchaseValue]);
+
+  const totalInvestment = (parseFloat(mediaCommitment) || 0) + (parseFloat(productionCost) || 0);
+
+  // Vertical multipliers — applied to channel benchmarks unless user overrides directly.
+  // If no vertical selected, defaults to DTC consumer (1.0x / 1.0x).
+  const verticalData = VERTICALS.find(v => v.value === vertical) || VERTICALS[0];
+  const verticalSiteVisitMult = verticalData.siteVisitMult;
+  const verticalConversionMult = verticalData.conversionMult;
+  
+  // Vertical-adjusted channel benchmarks (the "expected" case for this vertical + channel combo)
+  const verticalAdjustedSiteVisit = (variantData?.siteVisitRate || 1) * verticalSiteVisitMult;
+  const verticalAdjustedConversion = (variantData?.conversionRate || 3) * verticalConversionMult;
+
+  // Base rates from benchmark or overrides — overrides are absolute and bypass vertical adjustment
+  const baseSiteVisit = overrideSiteVisit !== null ? parseFloat(overrideSiteVisit) : verticalAdjustedSiteVisit;
+  const baseConversion = overrideConversion !== null ? parseFloat(overrideConversion) : verticalAdjustedConversion;
+
+  useEffect(() => {
+    if (variantData) {
+      setOverrideSiteVisit(null);
+      setOverrideConversion(null);
+      setWorstSiteVisit(null);
+      setWorstConversion(null);
+      setBestSiteVisit(null);
+      setBestConversion(null);
+    }
+  }, [channel, variant]);
+
+  const scenarios = useMemo(() => {
+    if (!variantData || !totalInvestment) return null;
+    const cpm = variantData.cpm;
+    const impressions = (totalInvestment - (parseFloat(productionCost) || 0)) / cpm * 1000;
+
+    // Branded search lift inputs
+    const monthlyBrandedSpend = parseFloat(brandedSearchSpend) || 0;
+    const brandedCPL = parseFloat(brandedSearchCPL) || 0;
+    const durationMonths = parseFloat(campaignDurationMonths) || 3;
+    const hasLiftInputs = monthlyBrandedSpend > 0 && brandedCPL > 0;
+    
+    // Current monthly branded conversions (baseline)
+    const monthlyBrandedConversions = hasLiftInputs ? monthlyBrandedSpend / brandedCPL : 0;
+    const lift = variantData.brandedSearchLift || { low: 5, mid: 12, high: 22 };
+
+    // CRITICAL: For lead-gen models, only the CLOSED leads should get LTV credit, not all leads.
+    // For purchase models, every "outcome" is already a customer with full LTV.
+    const closeRate = isLeadGen ? (parseFloat(leadCloseRate) / 100 || 0.15) : 1.0;
+    
+    // Months to close — sales cycle lag. Only matters for lead-gen models.
+    // For purchase models, the customer pays at point of purchase (lag = 0).
+    const closeLag = isLeadGen ? (parseFloat(monthsToClose) || 3) : 0;
+    
+    // 12-month ROI horizon (the tool's fixed window)
+    const HORIZON = 12;
+    
+    // Helper: given a month within the campaign (1-indexed) when leads are generated,
+    // and a cutoff month (the ROI window we're measuring), returns the fraction of LTV
+    // that falls between the close month and the cutoff month.
+    // Assumes LTV is recognized linearly over 12 months following close.
+    // For cutoffMonth=12 (the original behavior), this matches ltvFractionInHorizon.
+    const ltvFractionAtCutoff = (leadGenMonth, cutoffMonth) => {
+      const closeMonth = leadGenMonth + closeLag;
+      if (closeMonth >= cutoffMonth) return 0; // cohort closes outside the cutoff window
+      const monthsRecognized = Math.min(12, cutoffMonth - closeMonth);
+      return monthsRecognized / 12;
+    };
+    
+    // Legacy alias for the 12-month horizon — kept so existing code paths work unchanged.
+    const ltvFractionInHorizon = (leadGenMonth) => ltvFractionAtCutoff(leadGenMonth, HORIZON);
+
+    const computeScenario = (siteVisitPct, convPct, liftPct) => {
+      const siteVisits = impressions * (siteVisitPct / 100);
+      const outcomes = siteVisits * (convPct / 100); // total leads or purchases
+      const realizedCustomers = outcomes * closeRate; // customers who actually drive LTV
+      const firstPurchaseUnitValue = parseFloat(firstPurchaseValue) || parseFloat(aov) || ltv;
+      const firstRev = realizedCustomers * firstPurchaseUnitValue;
+      
+      // CAMPAIGN-DURATION COHORTING: Customers don't all get acquired on day 1 of the campaign.
+      // For a 3-month campaign, we assume ~1/3 of customers arrive in each month. The Month-1 cohort
+      // has 11 months remaining in the 12-month LTV horizon (captures 11/12 of LTV); the Month-3
+      // cohort has only 9 months remaining (captures 9/12 of LTV). Longer campaigns capture a smaller
+      // average fraction of customer LTV within the analysis window. A 1-month campaign captures ~96%
+      // average; a 6-month campaign ~75%; a 12-month always-on ~46%.
+      //
+      // For lead-gen with close lag, each cohort closes leadGenMonth + closeLag months from start.
+      // For all other models (subscription DTC, one-time purchase, etc.), customers close at the
+      // same month they're acquired (no sales-cycle delay).
+      //
+      // First-purchase revenue is recognized in full at the close month for every cohort (it's the
+      // initial transaction). LTV-beyond-first is pro-rated by the cohort's close month and the
+      // 12-month horizon. For brands where LTV ≈ firstPurchaseValue (one-time purchase like mattress
+      // or tile), ltvBeyondFirst ≈ 0 and this cohorting has near-zero impact — correct behavior.
+      let ltvRevenue;
+      let avgLtvFraction = 1; // for display purposes
+      if (isLeadGen && closeLag > 0) {
+        // Lead-gen with sales cycle: cohorts close leadGenMonth + closeLag from start.
+        // Uses the helper ltvFractionInHorizon (which adds closeLag internally).
+        let totalLtv = 0;
+        let totalFraction = 0;
+        const customersPerMonth = realizedCustomers / durationMonths;
+        for (let m = 1; m <= durationMonths; m++) {
+          const fraction = ltvFractionInHorizon(m);
+          totalLtv += customersPerMonth * ltv * fraction;
+          totalFraction += fraction / durationMonths;
+        }
+        ltvRevenue = totalLtv;
+        avgLtvFraction = totalFraction;
+      } else {
+        // Non-lead-gen (subscription DTC, one-time purchase, hybrid, omnichannel):
+        // Customers spread evenly across campaign duration, each closes instantly in their
+        // acquisition month. LTV pro-rated by (12 - acquisitionMonth + 1) / 12.
+        let totalLtv = 0;
+        let totalFraction = 0;
+        const customersPerMonth = realizedCustomers / durationMonths;
+        for (let m = 1; m <= durationMonths; m++) {
+          // Customer acquired & closed at month m → 12-m+1 months remaining in horizon
+          // (e.g. month 1 → 12 months remaining → fraction 12/12 = 1.0;
+          //  month 6 → 7 months remaining → 7/12 = 0.583;
+          //  month 12 → 1 month remaining → 1/12 = 0.083)
+          const monthsRemaining = Math.max(0, HORIZON - m + 1);
+          const fraction = Math.min(1, monthsRemaining / 12);
+          totalLtv += customersPerMonth * ltv * fraction;
+          totalFraction += fraction / durationMonths;
+        }
+        ltvRevenue = totalLtv;
+        avgLtvFraction = totalFraction;
+      }
+      
+      // Calculate branded search lift conversions using one-phase decay model:
+      // Full lift % during the campaign (N months) + 50% lift in month N+1 (decay tail).
+      // Capped at the 12-month ROI horizon — if campaign runs 12 months, no decay tail is added.
+      // Saturation discount: months 7+ apply at 80% of monthly lift to model audience saturation
+      // and diminishing returns (see WITHIN's marginal CPA framework — lift attenuates as
+      // upper-funnel exposure compounds against a finite addressable audience).
+      // For lead gen, branded search CPL is already a "lead" cost — apply same close rate downstream.
+      const liftMonthsAtFull = Math.min(durationMonths, 12);
+      const liftMonthsAtHalf = durationMonths < 12 ? 0.5 : 0; // 0.5 = one month at 50% strength
+      const effectiveLiftMonths = liftMonthsAtFull + liftMonthsAtHalf;
+      
+      // Apply saturation discount: full strength for months 1-6, 80% strength for months 7+
+      const saturationDiscountedFullMonths = liftMonthsAtFull <= 6 
+        ? liftMonthsAtFull 
+        : 6 + (liftMonthsAtFull - 6) * 0.80;
+      const effectiveLiftMonthsAdjusted = saturationDiscountedFullMonths + liftMonthsAtHalf;
+      
+      const liftConversions = hasLiftInputs 
+        ? monthlyBrandedConversions * (liftPct / 100) * effectiveLiftMonthsAdjusted 
+        : 0;
+      const liftRealizedCustomers = liftConversions * closeRate;
+      
+      // Apply same time-shifting + LTV pro-rating to branded search lift cohorts
+      let liftRevenue;
+      if (isLeadGen && closeLag > 0 && hasLiftInputs) {
+        // Lift conversions also spread across campaign window (using effective months)
+        let totalLiftLtv = 0;
+        const liftCustomersPerMonth = liftRealizedCustomers / effectiveLiftMonthsAdjusted;
+        // Iterate month-by-month, applying saturation discount for months 7+
+        for (let m = 1; m <= liftMonthsAtFull; m++) {
+          const monthWeight = m <= 6 ? 1.0 : 0.80;
+          totalLiftLtv += liftCustomersPerMonth * monthWeight * ltv * ltvFractionInHorizon(m);
+        }
+        if (liftMonthsAtHalf > 0) {
+          // Half-strength tail in month N+1
+          const tailMonth = liftMonthsAtFull + 1;
+          totalLiftLtv += liftCustomersPerMonth * liftMonthsAtHalf * ltv * ltvFractionInHorizon(tailMonth);
+        }
+        liftRevenue = totalLiftLtv;
+      } else {
+        liftRevenue = liftRealizedCustomers * ltv;
+      }
+      
+      const outcomesWithLift = outcomes + liftConversions;
+      const ltvRevenueWithLift = ltvRevenue + liftRevenue;
+      
+      // ============================================================================
+      // TIME-HORIZON BREAKDOWN: revenue at 1, 3, 6, 12 month cutoffs
+      // For each cutoff, we compute:
+      //   - firstPurchaseRev: cash from first purchases that close BY this month
+      //   - ltvRev: subscription/repeat revenue earned from close-month through cutoff
+      //   - liftFirstRev / liftLtvRev: same split applied to branded search lift customers
+      //   - totalRev: sum of all four
+      // This lets the decision tree show a payback-timing view instead of bundling
+      // all 12 months of value into one headline number.
+      // ============================================================================
+      const computeAtCutoff = (cutoffMonth) => {
+        // -- Direct response cohorts --
+        let directFirstRev = 0;
+        let directLtvRev = 0;
+        
+        if (isLeadGen && closeLag > 0) {
+          // Lead-gen with cycle: cohorts spread across campaign, close after lag
+          const customersPerMonth = realizedCustomers / durationMonths;
+          for (let m = 1; m <= durationMonths; m++) {
+            const closeMonth = m + closeLag;
+            if (closeMonth <= cutoffMonth) {
+              // First-purchase revenue is recognized at the close month if within cutoff
+              directFirstRev += customersPerMonth * firstPurchaseUnitValue;
+              // LTV beyond first purchase: recognized linearly over 12 months from close
+              const ltvBeyondFirst = Math.max(0, ltv - firstPurchaseUnitValue);
+              const ltvFraction = ltvFractionAtCutoff(m, cutoffMonth);
+              directLtvRev += customersPerMonth * ltvBeyondFirst * ltvFraction;
+            }
+          }
+        } else {
+          // Non-lead-gen models (subscription DTC, one-time purchase, hybrid, omnichannel):
+          // Customers spread evenly across the campaign duration, each closes in their
+          // acquisition month. First-purchase rev recognized at month m if m ≤ cutoff.
+          // LTV-beyond-first recognized linearly over 12 months from close, pro-rated by
+          // how much of those 12 months falls inside (closeMonth, cutoffMonth].
+          const customersPerMonth = realizedCustomers / durationMonths;
+          for (let m = 1; m <= durationMonths; m++) {
+            if (m <= cutoffMonth) {
+              directFirstRev += customersPerMonth * firstPurchaseUnitValue;
+              const ltvBeyondFirst = Math.max(0, ltv - firstPurchaseUnitValue);
+              // Cohort closes at start of month m. ltvFractionAtCutoff treats argument as
+              // leadGenMonth with closeLag added internally; for non-lead-gen closeLag is 0,
+              // so passing m means "close at month m" — months recognized = cutoffMonth - m.
+              const ltvFraction = ltvFractionAtCutoff(m, cutoffMonth);
+              directLtvRev += customersPerMonth * ltvBeyondFirst * ltvFraction;
+            }
+          }
+        }
+        
+        // -- Branded search lift cohorts --
+        let liftFirstRev = 0;
+        let liftLtvRev = 0;
+        
+        if (hasLiftInputs && liftRealizedCustomers > 0) {
+          // Lift customers spread across effective lift months with saturation weighting
+          const liftCustomersPerMonth = liftRealizedCustomers / effectiveLiftMonthsAdjusted;
+          
+          if (isLeadGen && closeLag > 0) {
+            // Same close lag applies to lift customers
+            for (let m = 1; m <= liftMonthsAtFull; m++) {
+              const monthWeight = m <= 6 ? 1.0 : 0.80;
+              const closeMonth = m + closeLag;
+              if (closeMonth <= cutoffMonth) {
+                liftFirstRev += liftCustomersPerMonth * monthWeight * firstPurchaseUnitValue;
+                const ltvBeyondFirst = Math.max(0, ltv - firstPurchaseUnitValue);
+                const ltvFraction = ltvFractionAtCutoff(m, cutoffMonth);
+                liftLtvRev += liftCustomersPerMonth * monthWeight * ltvBeyondFirst * ltvFraction;
+              }
+            }
+            if (liftMonthsAtHalf > 0) {
+              const tailMonth = liftMonthsAtFull + 1;
+              const closeMonth = tailMonth + closeLag;
+              if (closeMonth <= cutoffMonth) {
+                liftFirstRev += liftCustomersPerMonth * liftMonthsAtHalf * firstPurchaseUnitValue;
+                const ltvBeyondFirst = Math.max(0, ltv - firstPurchaseUnitValue);
+                const ltvFraction = ltvFractionAtCutoff(tailMonth, cutoffMonth);
+                liftLtvRev += liftCustomersPerMonth * liftMonthsAtHalf * ltvBeyondFirst * ltvFraction;
+              }
+            }
+          } else {
+            // Non-lead-gen: lift customers close in the month they're acquired
+            for (let m = 1; m <= liftMonthsAtFull; m++) {
+              const monthWeight = m <= 6 ? 1.0 : 0.80;
+              if (m <= cutoffMonth) {
+                liftFirstRev += liftCustomersPerMonth * monthWeight * firstPurchaseUnitValue;
+                const ltvBeyondFirst = Math.max(0, ltv - firstPurchaseUnitValue);
+                const ltvFraction = ltvFractionAtCutoff(m - 1, cutoffMonth); // close at start of m, so leadGenMonth-equiv = m-1
+                liftLtvRev += liftCustomersPerMonth * monthWeight * ltvBeyondFirst * ltvFraction;
+              }
+            }
+            if (liftMonthsAtHalf > 0) {
+              const tailMonth = liftMonthsAtFull + 1;
+              if (tailMonth <= cutoffMonth) {
+                liftFirstRev += liftCustomersPerMonth * liftMonthsAtHalf * firstPurchaseUnitValue;
+                const ltvBeyondFirst = Math.max(0, ltv - firstPurchaseUnitValue);
+                const ltvFraction = ltvFractionAtCutoff(tailMonth - 1, cutoffMonth);
+                liftLtvRev += liftCustomersPerMonth * liftMonthsAtHalf * ltvBeyondFirst * ltvFraction;
+              }
+            }
+          }
+        }
+        
+        const totalFirstRev = directFirstRev + liftFirstRev;
+        const totalLtvRev = directLtvRev + liftLtvRev;
+        const totalRev = totalFirstRev + totalLtvRev;
+        const roi = totalInvestment > 0 ? ((totalRev - totalInvestment) / totalInvestment) * 100 : 0;
+        
+        return {
+          firstPurchaseRev: totalFirstRev,
+          ltvRev: totalLtvRev,
+          totalRev,
+          directFirstRev,
+          directLtvRev,
+          liftFirstRev,
+          liftLtvRev,
+          roi,
+        };
+      };
+      
+      const byHorizon = {
+        m1: computeAtCutoff(1),
+        m3: computeAtCutoff(3),
+        m6: computeAtCutoff(6),
+        m12: computeAtCutoff(12),
+      };
+      
+      const marginPct = parseFloat(margin) || 100;
+      const ltvProfit = ltvRevenueWithLift * (marginPct / 100);
+      const paybackRate = ltv > 0 ? (isSubscription ? (parseFloat(mrr) || ltv / 12) : ltv) : 0;
+      const breakevenMonth = paybackRate > 0 && (realizedCustomers + liftRealizedCustomers) > 0 
+        ? Math.ceil(totalInvestment / ((realizedCustomers + liftRealizedCustomers) * paybackRate)) 
+        : null;
+      
+      return { 
+        siteVisits, outcomes, realizedCustomers, firstRev, ltvRevenue, 
+        liftConversions, liftRealizedCustomers, liftRevenue,
+        outcomesWithLift, ltvRevenueWithLift,
+        ltvProfit, breakevenMonth, 
+        paybackMonths: breakevenMonth || 12, 
+        siteVisitPct, convPct, liftPct,
+        avgLtvFraction,
+        byHorizon, // NEW: revenue & ROI at 1/3/6/12 month cutoffs, with first-purchase vs LTV split
+      };
+    };
+
+    const wSV = worstSiteVisit !== null ? parseFloat(worstSiteVisit) : baseSiteVisit * worstMultiplier;
+    const wC = worstConversion !== null ? parseFloat(worstConversion) : baseConversion * worstMultiplier;
+    const bSV = bestSiteVisit !== null ? parseFloat(bestSiteVisit) : baseSiteVisit * bestMultiplier;
+    const bC = bestConversion !== null ? parseFloat(bestConversion) : baseConversion * bestMultiplier;
+
+    return {
+      impressions,
+      hasLiftInputs,
+      monthlyBrandedConversions,
+      durationMonths,
+      effectiveLiftMonths: durationMonths < 12 ? durationMonths + 0.5 : 12,
+      // Saturation-adjusted effective months (applies 80% weight to months 7+)
+      effectiveLiftMonthsAdjusted: (durationMonths <= 6 ? durationMonths : 6 + (durationMonths - 6) * 0.80) + (durationMonths < 12 ? 0.5 : 0),
+      hasSaturation: durationMonths > 6,
+      hasDecayTail: durationMonths < 12,
+      lift,
+      closeRate,
+      closeLag,
+      isLeadGen,
+      worst: computeScenario(wSV, wC, lift.low),
+      base: computeScenario(baseSiteVisit, baseConversion, lift.mid),
+      best: computeScenario(bSV, bC, lift.high),
+    };
+  }, [variantData, totalInvestment, productionCost, baseSiteVisit, baseConversion, worstSiteVisit, worstConversion, bestSiteVisit, bestConversion, worstMultiplier, bestMultiplier, firstPurchaseValue, aov, ltv, margin, isSubscription, mrr, brandedSearchSpend, brandedSearchCPL, campaignDurationMonths, isLeadGen, leadCloseRate, monthsToClose]);
+
+  const breakevenConvRate = useMemo(() => {
+    if (!scenarios || !totalInvestment || !ltv) return null;
+    const impressions = scenarios.impressions;
+    const siteVisits = impressions * (baseSiteVisit / 100);
+    if (siteVisits === 0) return null;
+    const neededOutcomes = totalInvestment / ltv;
+    return (neededOutcomes / siteVisits) * 100;
+  }, [scenarios, totalInvestment, ltv, baseSiteVisit]);
+
+  const outcomeLabel = OUTCOME_TYPES.find(o => o.value === outcomeType)?.label || "Outcome";
+
+  // Direct mail uses different terminology — "site visit rate" doesn't fit (response can be call, store visit, QR scan).
+  // Per ANA/DMA convention, the upstream metric is "Response Rate" and downstream is "Response → Purchase".
+  const isDirectMail = channel === "direct_mail";
+  const siteVisitLabel = isDirectMail ? "Response Rate" : "Site Visit Rate";
+  const conversionLabel = isDirectMail ? `Response → ${outcomeLabel}` : `Visitor → ${outcomeLabel}`;
+
+  const canProceed1 = brandName && businessModel && vertical && ltv > 0 && currentCostPer;
+  const canProceed2 = channel && variant && mediaCommitment && campaignDurationMonths;
+  const canGenerate = canProceed1 && canProceed2;
+
+  const outputRef = useRef(null);
+
+  const handleGenerate = () => {
+    setShowOutput(true);
+    setTimeout(() => outputRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+  };
+
+  // ─── STYLES ───
+  const cssVars = {
+    "--bg": "#faf9f7",
+    "--card-bg": "#ffffff",
+    "--text": "#1a1a1a",
+    "--label": "#555",
+    "--hint": "#888",
+    "--input-bg": "#fff",
+    "--input-border": "#ddd",
+    "--accent": "#b85c38",
+    "--accent-light": "#f4e8df",
+  };
+
+  return (
+    <div style={{ ...cssVars, fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif", background: "var(--bg)", color: "var(--text)", minHeight: "100vh", padding: "24px 16px" }}>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+      
+      <div style={{ maxWidth: 720, margin: "0 auto" }}>
+        {/* Header */}
+        <div style={{ textAlign: "center", marginBottom: 36 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--accent)", marginBottom: 8 }}>WITHIN · Upper Funnel Investment Calculator</div>
+          <h1 style={{ fontFamily: "'Instrument Serif', serif", fontSize: 32, fontWeight: 400, margin: 0, lineHeight: 1.2 }}>Risk & Reward Framework</h1>
+          <p style={{ fontSize: 13, color: "var(--hint)", marginTop: 8, maxWidth: 520, margin: "8px auto 0" }}>Model the financial case for experimental media investments over a <strong>12-month ROI horizon</strong>. Powered by industry benchmark data.</p>
+        </div>
+
+        {/* Step Tabs */}
+        <div style={{ display: "flex", gap: 2, marginBottom: 24, background: "var(--input-border)", borderRadius: 8, padding: 2 }}>
+          {["Brand & Product", "Channel & Tactic", "Scenarios & Budget"].map((label, i) => (
+            <button
+              key={i}
+              onClick={() => setStep(i + 1)}
+              style={{
+                flex: 1, padding: "10px 8px", border: "none", borderRadius: 6, cursor: "pointer", fontFamily: "inherit",
+                fontSize: 12, fontWeight: step === i + 1 ? 600 : 400,
+                background: step === i + 1 ? "var(--card-bg)" : "transparent",
+                color: step === i + 1 ? "var(--text)" : "var(--hint)",
+                boxShadow: step === i + 1 ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                transition: "all 0.2s",
+              }}
+            >
+              {i + 1}. {label}
+            </button>
+          ))}
+        </div>
+
+        {/* ─── STEP 1: Brand ─── */}
+        {step === 1 && (
+          <div style={{ background: "var(--card-bg)", borderRadius: 12, padding: 28, boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 20px" }}>
+              <InputGroup label="Brand Name">
+                <TextInput value={brandName} onChange={setBrandName} placeholder="e.g. NOVOS Labs" />
+              </InputGroup>
+              <InputGroup label="Business Model">
+                <Select value={businessModel} onChange={setBusinessModel} options={BUSINESS_MODELS} placeholder="Select model..." />
+              </InputGroup>
+
+              <div style={{ gridColumn: "1 / -1" }}>
+                <InputGroup label="Vertical / Industry" hint="Calibrates conversion benchmarks for your category. Cold creator/podcast traffic converts very differently across verticals.">
+                  <Select value={vertical} onChange={setVertical} options={VERTICALS} placeholder="Select your vertical..." />
+                  {vertical && (
+                    <div style={{ fontSize: 11, color: "var(--hint)", marginTop: 6, fontStyle: "italic", lineHeight: 1.5 }}>
+                      {verticalData.note} {verticalData.value !== "dtc_consumer" && <>Site visit rates ×{verticalSiteVisitMult}, conversion rates ×{verticalConversionMult} vs. DTC consumer baseline.</>}
+                    </div>
+                  )}
+                </InputGroup>
+              </div>
+
+              {isSubscription ? (
+                <>
+                  <InputGroup label="First Purchase Value" hint="Initial order or sign-up value">
+                    <TextInput value={firstPurchaseValue} onChange={setFirstPurchaseValue} placeholder="60" prefix="$" type="number" />
+                  </InputGroup>
+                  <InputGroup label="Monthly Recurring Revenue" hint="Per customer, per month">
+                    <TextInput value={mrr} onChange={setMrr} placeholder="40" prefix="$" type="number" />
+                  </InputGroup>
+                </>
+              ) : (
+                <InputGroup label="Avg Order / Contract Value">
+                  <TextInput value={aov} onChange={(v) => { setAov(v); if (!ltvDirect) setLtvDirect(""); }} placeholder="120" prefix="$" type="number" />
+                </InputGroup>
+              )}
+
+              <InputGroup label="12-Month Customer LTV" hint={isSubscription && mrr && retentionMonths ? `Auto: ${fmt(parseFloat(mrr) * parseFloat(retentionMonths))} (${retentionMonths}-mo retention × MRR)` : isSubscription ? "Pick retention period OR enter LTV directly" : "Revenue per customer over 12 months. Leave blank to use AOV."}>
+                {isSubscription && !ltvDirect ? (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <Select value={retentionMonths} onChange={setRetentionMonths} options={RETENTION_OPTIONS} placeholder="Retention period..." />
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", fontSize: 12, color: "var(--hint)" }}>or</div>
+                    <div style={{ flex: 1 }}>
+                      <TextInput value={ltvDirect} onChange={setLtvDirect} placeholder="LTV directly" prefix="$" type="number" />
+                    </div>
+                  </div>
+                ) : !isSubscription ? (
+                  <TextInput value={ltvDirect} onChange={setLtvDirect} placeholder="Same as AOV if one-time" prefix="$" type="number" />
+                ) : (
+                  <TextInput value={ltvDirect} onChange={setLtvDirect} placeholder="480" prefix="$" type="number" />
+                )}
+              </InputGroup>
+
+              <InputGroup label="Gross Margin" optional hint="Enables profit-based projections">
+                <TextInput value={margin} onChange={setMargin} placeholder="65" prefix="%" type="number" />
+              </InputGroup>
+
+              <div>
+                <InputGroup label={`Current Cost Per...`} hint="Your benchmark from proven channels">
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <TextInput value={currentCostPer} onChange={setCurrentCostPer} placeholder="85" prefix="$" type="number" />
+                    </div>
+                    <div style={{ width: 120 }}>
+                      <Select value={outcomeType} onChange={setOutcomeType} options={OUTCOME_TYPES} />
+                    </div>
+                  </div>
+                </InputGroup>
+              </div>
+
+              {isLeadGen && (
+                <div style={{ gridColumn: "1 / -1", padding: 16, background: "var(--accent-light)", borderRadius: 8, border: "1px solid #e8d5c4", marginBottom: 18 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--accent)", marginBottom: 12 }}>Lead-Gen Sales Cycle</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+                    <InputGroup label="Lead-to-Close Rate" hint="Of leads generated, what % typically close into paying customers?">
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <div style={{ flex: 1 }}>
+                          <TextInput value={leadCloseRate} onChange={setLeadCloseRate} placeholder="15" prefix="%" type="number" />
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 10, color: "var(--hint)", marginTop: 4 }}>
+                        {leadCloseRate ? `≈ ${fmt(ltv * (parseFloat(leadCloseRate) / 100))} per lead` : "Default: 15%"}
+                      </div>
+                    </InputGroup>
+                    <InputGroup label="Months to Close" hint="Typical sales cycle from lead to closed customer">
+                      <div style={{ flex: 1 }}>
+                        <TextInput value={monthsToClose} onChange={setMonthsToClose} placeholder="3" type="number" />
+                      </div>
+                      <div style={{ fontSize: 10, color: "var(--hint)", marginTop: 4 }}>
+                        Default: 3 months. Longer cycles delay revenue recognition.
+                      </div>
+                    </InputGroup>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--hint)", lineHeight: 1.5, marginTop: 12, padding: 10, background: "rgba(255,255,255,0.6)", borderRadius: 6 }}>
+                    <strong style={{ color: "var(--text)" }}>How this affects ROI:</strong> Leads close after the sales cycle elapses, so revenue recognition is delayed. Within the 12-month ROI horizon, only LTV earned <em>before month 12</em> is credited. A lead generated in month 10 with a 5-month cycle would close in month 15 — outside the horizon — and contribute zero revenue to this analysis.
+                  </div>
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button
+                onClick={() => setStep(2)}
+                disabled={!canProceed1}
+                style={{
+                  padding: "10px 28px", border: "none", borderRadius: 6, cursor: canProceed1 ? "pointer" : "not-allowed",
+                  background: canProceed1 ? "var(--accent)" : "var(--input-border)", color: canProceed1 ? "#fff" : "var(--hint)",
+                  fontFamily: "inherit", fontSize: 13, fontWeight: 600, transition: "all 0.2s"
+                }}
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ─── STEP 2: Tactic ─── */}
+        {step === 2 && (
+          <div style={{ background: "var(--card-bg)", borderRadius: 12, padding: 28, boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 20px" }}>
+              <InputGroup label="Channel">
+                <Select value={channel} onChange={(v) => { setChannel(v); setVariant(""); }} options={Object.entries(CHANNELS).map(([k, v]) => ({ value: k, label: v.label }))} placeholder="Select channel..." />
+              </InputGroup>
+              <InputGroup label="Tactic Variant">
+                <Select
+                  value={variant}
+                  onChange={setVariant}
+                  options={channelData ? Object.entries(channelData.variants).map(([k, v]) => ({ value: k, label: v.label })) : []}
+                  placeholder={channelData ? "Select variant..." : "Select channel first"}
+                />
+              </InputGroup>
+              <InputGroup label="Total Media Commitment" hint="The committed spend on media">
+                <TextInput value={mediaCommitment} onChange={setMediaCommitment} placeholder="25000" prefix="$" type="number" />
+              </InputGroup>
+              <InputGroup label="Production & Setup Cost" optional hint={variantData?.productionNote || "Landing pages, creative production, etc."}>
+                <TextInput value={productionCost} onChange={setProductionCost} placeholder="0" prefix="$" type="number" />
+              </InputGroup>
+              <InputGroup label="Campaign Duration" hint="How long the upper-funnel campaign will be live. Important: customers are spread evenly across the campaign window — later-acquired cohorts capture less of their 12-month LTV inside the analysis horizon, so longer campaigns produce more conservative ROI projections per customer. A 1-month campaign captures ~96% of average LTV; a 6-month campaign ~75%; a 12-month always-on ~46%.">
+                <Select value={campaignDurationMonths} onChange={setCampaignDurationMonths} options={CAMPAIGN_DURATION_OPTIONS} placeholder="Select duration..." />
+              </InputGroup>
+            </div>
+
+            {/* Benchmark Preview */}
+            {variantData && (
+              <div style={{ marginTop: 20, padding: 16, background: "var(--accent-light)", borderRadius: 8, border: "1px solid #e8d5c4" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--accent)" }}>Benchmark Data — {verticalSiteVisitMult !== 1 || verticalConversionMult !== 1 ? `Vertical-Adjusted` : "Auto-Filled"}</div>
+                  {(verticalSiteVisitMult !== 1 || verticalConversionMult !== 1) && (
+                    <div style={{ fontSize: 9, color: "var(--hint)" }}>{verticalData.label.split(" (")[0]} · ×{verticalSiteVisitMult} visit · ×{verticalConversionMult} conv</div>
+                  )}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                  {[
+                    { label: "CPM", value: `$${variantData.cpm}`, raw: null },
+                    { label: siteVisitLabel, value: `${verticalAdjustedSiteVisit.toFixed(2)}%`, raw: verticalSiteVisitMult !== 1 ? `Raw: ${variantData.siteVisitRate}%` : null },
+                    { label: isDirectMail ? `Response → ${outcomeLabel}` : "Visitor → Outcome", value: `${verticalAdjustedConversion.toFixed(2)}%`, raw: verticalConversionMult !== 1 ? `Raw: ${variantData.conversionRate}%` : null },
+                    { label: "Ad Recall", value: `${variantData.recallRate}%`, raw: null },
+                  ].map((b, i) => (
+                    <div key={i}>
+                      <div style={{ fontSize: 10, color: "var(--hint)" }}>{b.label}</div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: "var(--accent)", fontFamily: "'DM Mono', monospace" }}>{b.value}</div>
+                      {b.raw && <div style={{ fontSize: 9, color: "var(--hint)", marginTop: 1 }}>{b.raw}</div>}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: 10, color: "var(--hint)", marginTop: 10 }}>Source: {variantData.source}{(verticalSiteVisitMult !== 1 || verticalConversionMult !== 1) && <> · Vertical multipliers calibrated against IRP Commerce 2026, Shopify 2026, Varos 2026</>}</div>
+              </div>
+            )}
+
+            {/* Budget-Scale Saturation Flag — appears when budget exceeds typical channel norms.
+                Calibrated against published industry data:
+                - Podcast: Magellan AI Q1 2025 reports top 500 podcasts averaged $300K/mo per advertiser, capturing ~50% of total podcast spend
+                - Influencer Nano/Micro: IMH 2026 rates ($50-1,200/post) imply $75K covers 60-150 creators, near agency operational ceiling
+                - Influencer Mid-Tier: rates ($2-10K/post) imply $200K covers 20-100 creators, the top of typical tier capacity
+                - Influencer Macro/Mega: rates ($5-50K+/post) imply $500K is upper-mid range
+                Other channels (CTV, streaming, YouTube, direct mail, OOH) are not flagged because published evidence shows
+                they don't materially saturate at typical agency campaign sizes. Direct mail in particular gets MORE efficient
+                with scale per Gunderson Direct's published cost-per-thousand data. */}
+            {variantData && (() => {
+              const budget = parseFloat(mediaCommitment) || 0;
+              if (budget === 0) return null;
+              
+              let threshold = null;
+              let detailMsg = null;
+              let citation = null;
+              
+              if (channel === "podcast" && budget >= 250000) {
+                threshold = 250000;
+                detailMsg = "you've moved beyond the top 500 podcasts where audience quality and conversion are highest. At this spend, expect 20-30% efficiency degradation as inventory pressure pushes you into mid-tier (501-3,000 ranked) shows.";
+                citation = "Magellan AI Q1 2025: top 500 podcasts averaged $300K/mo per advertiser, capturing ~50% of total podcast spend";
+              } else if (channel === "influencer" && variant === "nano_micro" && budget >= 75000) {
+                threshold = 75000;
+                detailMsg = "you're approaching the operational ceiling for nano/micro creator programs. At $50-1,200 per post, this budget covers 60-150 creators — beyond which most agencies struggle with creator-fit quality, and brands typically tier up to mid-tier creators by necessity.";
+                citation = "Influencer Marketing Hub 2026 rate cards · Digiday 2024 saturation reporting";
+              } else if (channel === "influencer" && variant === "mid_tier" && budget >= 200000) {
+                threshold = 200000;
+                detailMsg = "you're at the upper bound of mid-tier creator inventory. At $2,000-10,000 per post, this budget covers 20-100 creators — beyond which brands typically need to tier up to macro creators or accept declining audience-brand fit.";
+                citation = "Influencer Marketing Hub 2026 rate cards";
+              } else if (channel === "influencer" && variant === "macro_mega" && budget >= 500000) {
+                threshold = 500000;
+                detailMsg = "you're operating at scale where macro/mega creator inventory becomes price-driven and creative differentiation across creators harder to maintain. Expect CPM inflation of 15-30% and reduced creative diversity vs. smaller-budget benchmarks.";
+                citation = "Influencer Marketing Hub 2026 rate cards · Aspire 2026";
+              }
+              
+              if (!threshold) return null;
+              
+              return (
+                <div style={{ marginTop: 12, padding: 14, background: "#fff8e8", borderRadius: 8, border: "1px solid #f0d090" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#a06010", marginBottom: 6 }}>Budget-Scale Flag — Above {fmt(threshold)} for {variantData.label}</div>
+                  <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.5 }}>
+                    At {fmt(budget)}, {detailMsg} The benchmark rates above reflect typical-budget performance; <strong>actual outcomes at this scale are likely 15-30% below the projection</strong>. Either model {fmt(budget * 0.7)}–{fmt(budget * 0.85)} as a more realistic expected case, or proceed knowing the projection is the optimistic ceiling.
+                  </div>
+                  <div style={{ fontSize: 10, color: "var(--hint)", marginTop: 6, fontStyle: "italic" }}>Source: {citation}</div>
+                </div>
+              );
+            })()}
+
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16 }}>
+              <button onClick={() => setStep(1)} style={{ padding: "10px 28px", border: "1px solid var(--input-border)", borderRadius: 6, cursor: "pointer", background: "transparent", color: "var(--text)", fontFamily: "inherit", fontSize: 13, fontWeight: 500 }}>← Back</button>
+              <button
+                onClick={() => setStep(3)}
+                disabled={!canProceed2}
+                style={{
+                  padding: "10px 28px", border: "none", borderRadius: 6, cursor: canProceed2 ? "pointer" : "not-allowed",
+                  background: canProceed2 ? "var(--accent)" : "var(--input-border)", color: canProceed2 ? "#fff" : "var(--hint)",
+                  fontFamily: "inherit", fontSize: 13, fontWeight: 600
+                }}
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ─── STEP 3: Scenarios & Budget ─── */}
+        {step === 3 && (
+          <div style={{ background: "var(--card-bg)", borderRadius: 12, padding: 28, boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--label)", marginBottom: 16 }}>Scenario Assumptions</div>
+            <p style={{ fontSize: 12, color: "var(--hint)", marginTop: -8, marginBottom: 20, lineHeight: 1.5 }}>
+              Conservative and Optimistic are auto-generated from the Expected case. Edit any number directly to override.
+            </p>
+
+            {variantData && (
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
+                <ScenarioCard
+                  title="Conservative"
+                  color="red"
+                  isEditing={true}
+                  onEdit={(key, val) => key === "sv" ? setWorstSiteVisit(val) : setWorstConversion(val)}
+                  metrics={[
+                    { label: siteVisitLabel, value: fmtPct((worstSiteVisit !== null ? parseFloat(worstSiteVisit) : baseSiteVisit * worstMultiplier)), editable: true, editKey: "sv", editValue: worstSiteVisit !== null ? worstSiteVisit : (baseSiteVisit * worstMultiplier).toFixed(2), editSuffix: "%" },
+                    { label: conversionLabel, value: fmtPct((worstConversion !== null ? parseFloat(worstConversion) : baseConversion * worstMultiplier)), editable: true, editKey: "cv", editValue: worstConversion !== null ? worstConversion : (baseConversion * worstMultiplier).toFixed(2), editSuffix: "%" },
+                  ]}
+                />
+                <ScenarioCard
+                  title="Expected"
+                  color="blue"
+                  isEditing={true}
+                  onEdit={(key, val) => key === "sv" ? setOverrideSiteVisit(val) : setOverrideConversion(val)}
+                  benchmarkSource={`${variantData.source} · ${verticalData.label.split(" (")[0]} adjusted`}
+                  metrics={[
+                    { label: siteVisitLabel, value: fmtPct(baseSiteVisit), editable: true, editKey: "sv", editValue: overrideSiteVisit !== null ? overrideSiteVisit : verticalAdjustedSiteVisit.toFixed(2), editSuffix: "%" },
+                    { label: conversionLabel, value: fmtPct(baseConversion), editable: true, editKey: "cv", editValue: overrideConversion !== null ? overrideConversion : verticalAdjustedConversion.toFixed(2), editSuffix: "%" },
+                  ]}
+                />
+                <ScenarioCard
+                  title="Optimistic"
+                  color="green"
+                  isEditing={true}
+                  onEdit={(key, val) => key === "sv" ? setBestSiteVisit(val) : setBestConversion(val)}
+                  metrics={[
+                    { label: siteVisitLabel, value: fmtPct((bestSiteVisit !== null ? parseFloat(bestSiteVisit) : baseSiteVisit * bestMultiplier)), editable: true, editKey: "sv", editValue: bestSiteVisit !== null ? bestSiteVisit : (baseSiteVisit * bestMultiplier).toFixed(2), editSuffix: "%" },
+                    { label: conversionLabel, value: fmtPct((bestConversion !== null ? parseFloat(bestConversion) : baseConversion * bestMultiplier)), editable: true, editKey: "cv", editValue: bestConversion !== null ? bestConversion : (baseConversion * bestMultiplier).toFixed(2), editSuffix: "%" },
+                  ]}
+                />
+              </div>
+            )}
+
+            <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--label)", marginBottom: 12, marginTop: 8 }}>Budget Context</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 20px" }}>
+              <InputGroup label="Reallocated from Existing Channel" hint="Enter $0 if this is entirely new budget">
+                <TextInput value={reallocationAmt} onChange={setReallocationAmt} placeholder="0" prefix="$" type="number" />
+              </InputGroup>
+              {parseFloat(reallocationAmt) > 0 && (
+                <InputGroup label={`Monthly ${outcomeLabel}s from That Budget`} hint="What does this budget currently produce?">
+                  <TextInput value={existingChannelOutput} onChange={setExistingChannelOutput} placeholder="e.g. 50" type="number" />
+                </InputGroup>
+              )}
+            </div>
+
+            {/* Branded Search Lift — Optional but Critical */}
+            <div style={{ marginTop: 24, padding: 20, background: "#f6f4f0", border: "1px solid #e5e0d8", borderRadius: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--label)" }}>Branded Search Lift</div>
+                <div style={{ fontSize: 10, padding: "2px 8px", background: "var(--accent-light)", color: "var(--accent)", borderRadius: 4, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" }}>Recommended</div>
+              </div>
+              <p style={{ fontSize: 12, color: "var(--hint)", margin: "0 0 16px 0", lineHeight: 1.5 }}>
+                Upper-funnel media drives measurable lift in branded search demand — the most defensible source of indirect attribution. Lift is modeled at full strength during the {campaignDurationMonths || "—"}-month campaign, then 50% in the month after launch ends to account for tail effects.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px", alignItems: "start" }}>
+                <InputGroup equalHeight label="Branded Search Spend / mo" hint="Current monthly spend on branded search" optional>
+                  <TextInput value={brandedSearchSpend} onChange={setBrandedSearchSpend} placeholder="e.g. 5000" prefix="$" type="number" />
+                </InputGroup>
+                <InputGroup equalHeight label="Branded Search CPL" hint="Current CPL or CPA for branded search" optional>
+                  <TextInput value={brandedSearchCPL} onChange={setBrandedSearchCPL} placeholder="e.g. 25" prefix="$" type="number" />
+                </InputGroup>
+              </div>
+              {variantData && parseFloat(brandedSearchSpend) > 0 && parseFloat(brandedSearchCPL) > 0 && (
+                <div style={{ marginTop: 14, padding: 12, background: "white", border: "1px solid #e5e0d8", borderRadius: 6, fontSize: 12, color: "var(--text)", lineHeight: 1.6 }}>
+                  <strong>Lift assumption for {variantData.label}:</strong> {variantData.brandedSearchLift?.low}% (conservative) → {variantData.brandedSearchLift?.mid}% (expected) → {variantData.brandedSearchLift?.high}% (optimistic) increase in branded search volume during the campaign.
+                  <div style={{ fontSize: 11, color: "var(--hint)", marginTop: 4 }}>
+                    At {fmt(parseFloat(brandedSearchSpend))}/month spend and {fmt(parseFloat(brandedSearchCPL))} CPL, that's roughly {Math.round((parseFloat(brandedSearchSpend) / parseFloat(brandedSearchCPL)) * (variantData.brandedSearchLift?.mid / 100) * ((parseFloat(campaignDurationMonths) || 3) + 0.5))} additional {outcomeLabel.toLowerCase()}s in the expected case ({campaignDurationMonths || 3} months at full lift + 0.5 month tail).
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 20 }}>
+              <button onClick={() => setStep(2)} style={{ padding: "10px 28px", border: "1px solid var(--input-border)", borderRadius: 6, cursor: "pointer", background: "transparent", color: "var(--text)", fontFamily: "inherit", fontSize: 13, fontWeight: 500 }}>← Back</button>
+              <button
+                onClick={handleGenerate}
+                disabled={!canGenerate}
+                style={{
+                  padding: "12px 36px", border: "none", borderRadius: 6, cursor: canGenerate ? "pointer" : "not-allowed",
+                  background: canGenerate ? "var(--accent)" : "var(--input-border)", color: canGenerate ? "#fff" : "var(--hint)",
+                  fontFamily: "inherit", fontSize: 14, fontWeight: 700, letterSpacing: "0.03em", transition: "all 0.2s"
+                }}
+              >
+                Generate Analysis →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════ */}
+        {/* ─── OUTPUT ─── */}
+        {/* ═══════════════════════════════════════════════ */}
+        {showOutput && scenarios && (
+          <div ref={outputRef} style={{ marginTop: 40 }}>
+            {/* Output Header */}
+            <div style={{ textAlign: "center", marginBottom: 28 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--accent)" }}>Investment Analysis</div>
+              <h2 style={{ fontFamily: "'Instrument Serif', serif", fontSize: 26, fontWeight: 400, margin: "6px 0 4px" }}>
+                {channelData?.label}: {variantData?.label}
+              </h2>
+              <div style={{ fontSize: 14, color: "var(--hint)" }}>
+                {brandName} · {BUSINESS_MODELS.find(b => b.value === businessModel)?.label}
+              </div>
+            </div>
+
+            {/* Decision Tree */}
+            <div style={{ background: "var(--card-bg)", borderRadius: 12, padding: "24px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)", marginBottom: 20, overflowX: "auto" }}>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--label)", marginBottom: 4, textAlign: "center" }}>Scenario Decision Tree</div>
+              <div style={{ fontSize: 11, color: "var(--hint)", textAlign: "center", marginBottom: 14 }}>ROI shown at selected time horizon — first-purchase revenue + accrued LTV through cutoff</div>
+              
+              {/* Time-horizon tab strip — controls the Decision Tree only */}
+              <div style={{ display: "flex", justifyContent: "center", gap: 0, marginBottom: 14 }}>
+                {[
+                  { key: "m1", label: "1 Month" },
+                  { key: "m3", label: "3 Months" },
+                  { key: "m6", label: "6 Months" },
+                  { key: "m12", label: "12 Months" },
+                ].map((tab, idx, arr) => {
+                  const isActive = decisionTreeHorizonKey === tab.key;
+                  const isFirst = idx === 0;
+                  const isLast = idx === arr.length - 1;
+                  return (
+                    <button
+                      key={tab.key}
+                      onClick={() => setDecisionTreeHorizonKey(tab.key)}
+                      style={{
+                        padding: "8px 18px",
+                        border: "1px solid var(--input-border)",
+                        borderTopLeftRadius: isFirst ? 6 : 0,
+                        borderBottomLeftRadius: isFirst ? 6 : 0,
+                        borderTopRightRadius: isLast ? 6 : 0,
+                        borderBottomRightRadius: isLast ? 6 : 0,
+                        borderRight: isLast ? "1px solid var(--input-border)" : "none",
+                        background: isActive ? "var(--accent)" : "transparent",
+                        color: isActive ? "#fff" : "var(--text)",
+                        fontFamily: "inherit",
+                        fontSize: 12,
+                        fontWeight: isActive ? 600 : 500,
+                        cursor: "pointer",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              {/* Caption that adapts to selected horizon */}
+              <div style={{ fontSize: 11, color: "var(--hint)", textAlign: "center", marginBottom: 12, fontStyle: "italic", lineHeight: 1.5, maxWidth: 560, margin: "0 auto 12px" }}>
+                {decisionTreeHorizonKey === "m1" && <>Showing revenue captured in the <strong>first month</strong> only. For subscription or LTV-heavy brands this will look conservative — it's a near-term payback check, not a final verdict.</>}
+                {decisionTreeHorizonKey === "m3" && <>Showing revenue captured through <strong>3 months</strong>. The defensible near-term view — most clients should see meaningful payback within this window.</>}
+                {decisionTreeHorizonKey === "m6" && <>Showing revenue captured through <strong>6 months</strong>. LTV begins to compound here for subscription and repeat-purchase brands.</>}
+                {decisionTreeHorizonKey === "m12" && <>Showing revenue captured over the full <strong>12-month LTV horizon</strong>. The complete picture — but skeptical execs may discount the back half.</>}
+              </div>
+              
+              <DecisionTree
+                totalInvestment={totalInvestment}
+                impressions={scenarios.impressions}
+                scenarios={[scenarios.worst, scenarios.base, scenarios.best]}
+                outcomeLabel={outcomeLabel}
+                currentCostPer={parseFloat(currentCostPer)}
+                existingChannelOutput={existingChannelOutput}
+                reallocationAmt={parseFloat(reallocationAmt) || 0}
+                horizonKey={decisionTreeHorizonKey}
+              />
+            </div>
+
+            {/* Payback Curve */}
+            <div style={{ background: "var(--card-bg)", borderRadius: 12, padding: "24px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)", marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--label)", marginBottom: 4, textAlign: "center" }}>Cumulative Return Over 12 Months</div>
+              <div style={{ fontSize: 11, color: "var(--hint)", textAlign: "center", marginBottom: 16 }}>
+                Breakeven shown as dot where the curve crosses zero
+                {scenarios.closeLag > 0 && <> · Revenue starts flowing month {scenarios.closeLag + 1} (after {scenarios.closeLag}-month sales cycle)</>}
+              </div>
+              <PaybackChart
+                scenarios={[scenarios.worst, scenarios.base, scenarios.best]}
+                totalInvestment={totalInvestment}
+                closeLag={scenarios.closeLag}
+              />
+            </div>
+
+            {/* Realized ROI Over Time */}
+            <div style={{ background: "var(--card-bg)", borderRadius: 12, padding: 24, boxShadow: "0 1px 4px rgba(0,0,0,0.04)", marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--label)", marginBottom: 4 }}>Realized ROI Over Time</div>
+              <div style={{ fontSize: 12, color: "var(--hint)", marginBottom: 18, lineHeight: 1.5 }}>
+                Cumulative revenue and ROI at month 1, 3, 6, and 12 — same time-horizon math as the Decision Tree tabs above. Use this to set realistic expectations on when results will materialize.
+                {scenarios.closeLag > 0 && <> Revenue is delayed by the {scenarios.closeLag}-month sales cycle — early months show $0 returns until leads close.</>}
+              </div>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 560 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "2px solid var(--input-border)" }}>
+                      <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, color: "var(--label)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Scenario</th>
+                      <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: "var(--label)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Month 1</th>
+                      <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: "var(--label)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Month 3</th>
+                      <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: "var(--label)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Month 6</th>
+                      <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: "var(--label)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", borderLeft: "2px solid var(--input-border)" }}>Month 12</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { name: "Conservative", color: "#c0392b", s: scenarios.worst },
+                      { name: "Expected", color: "#2980b9", s: scenarios.base },
+                      { name: "Optimistic", color: "#27ae60", s: scenarios.best },
+                    ].map((row, i) => {
+                      const horizons = ["m1", "m3", "m6", "m12"];
+                      const cells = horizons.map(hk => {
+                        const hd = row.s.byHorizon ? row.s.byHorizon[hk] : null;
+                        const cumRev = hd ? hd.totalRev : 0;
+                        const netReturn = cumRev - totalInvestment;
+                        const roi = totalInvestment > 0 ? (netReturn / totalInvestment) * 100 : 0;
+                        return { cumRev, netReturn, roi };
+                      });
+                      return (
+                        <tr key={i} style={{ borderBottom: "1px solid var(--input-border)" }}>
+                          <td style={{ padding: "14px 10px", fontWeight: 600, color: row.color }}>{row.name}</td>
+                          {cells.map((c, ci) => (
+                            <td key={ci} style={{ padding: "14px 10px", textAlign: "right", borderLeft: ci === 3 ? "2px solid var(--input-border)" : "none" }}>
+                              <div style={{ fontFamily: "'DM Mono', monospace", fontWeight: 700, fontSize: 13, color: c.roi >= 0 ? row.color : "var(--text)" }}>
+                                {c.roi >= 0 ? "+" : ""}{Math.round(c.roi)}%
+                              </div>
+                              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "var(--hint)", marginTop: 1 }}>
+                                {fmt(c.cumRev)} rev
+                              </div>
+                              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: c.netReturn >= 0 ? "#27ae60" : "#c0392b", marginTop: 1 }}>
+                                {c.netReturn >= 0 ? "+" : ""}{fmt(c.netReturn)} net
+                              </div>
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ marginTop: 14, padding: 12, background: "#f6f4f0", borderRadius: 6, fontSize: 11, color: "var(--hint)", lineHeight: 1.5 }}>
+                <strong style={{ color: "var(--text)" }}>Reading this table:</strong> Each cell shows ROI %, cumulative revenue at that month, and net return after subtracting the {fmt(totalInvestment)} investment. Revenue at each horizon = <strong>first-purchase revenue from cohorts that close by that month</strong> + <strong>LTV revenue accrued from close month through cutoff</strong> (LTV recognized linearly over 12 months from each cohort's close).
+                <br /><br />
+                <strong style={{ color: "var(--text)" }}>Cohort-aware LTV:</strong> Customers don't all arrive on day 1. In a {scenarios.durationMonths}-month campaign, customers are spread evenly across the {scenarios.durationMonths} months. The Month-1 cohort has {12 - 1 + 1} months remaining in the 12-month horizon (captures 100% of LTV); the Month-{scenarios.durationMonths} cohort has {Math.max(0, 12 - scenarios.durationMonths + 1)} months remaining (captures {Math.round(Math.min(1, Math.max(0, 12 - scenarios.durationMonths + 1) / 12) * 100)}% of LTV). On average, this campaign captures roughly <strong>{Math.round(scenarios.base.avgLtvFraction * 100)}%</strong> of each customer's full 12-month LTV. Longer campaigns capture less average LTV per customer because later-acquired cohorts have less of the 12-month window remaining.
+              </div>
+            </div>
+
+            {/* Branded Search Lift Breakdown */}
+            {scenarios.hasLiftInputs && (
+              <div style={{ background: "var(--card-bg)", borderRadius: 12, padding: 24, boxShadow: "0 1px 4px rgba(0,0,0,0.04)", marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--label)", marginBottom: 4 }}>Direct Response + Branded Search Lift</div>
+                <div style={{ fontSize: 12, color: "var(--hint)", marginBottom: 14, lineHeight: 1.5 }}>
+                  Total impact = directly attributable conversions + measurable uplift in branded search demand over the {scenarios.durationMonths}-month campaign window. Revenue is split into <strong>first-purchase</strong> (high-confidence near-term cash) and <strong>LTV</strong> (modeled value beyond first purchase, dependent on retention assumptions).
+                </div>
+                
+                {/* Independent time-horizon tab strip — does NOT affect the Decision Tree above */}
+                <div style={{ display: "flex", justifyContent: "flex-start", gap: 0, marginBottom: 14, flexWrap: "wrap" }}>
+                  {[
+                    { key: "m1", label: "1 Month" },
+                    { key: "m3", label: "3 Months" },
+                    { key: "m6", label: "6 Months" },
+                    { key: "m12", label: "12 Months" },
+                  ].map((tab, idx, arr) => {
+                    const isActive = directResponseHorizonKey === tab.key;
+                    const isFirst = idx === 0;
+                    const isLast = idx === arr.length - 1;
+                    return (
+                      <button
+                        key={tab.key}
+                        onClick={() => setDirectResponseHorizonKey(tab.key)}
+                        style={{
+                          padding: "7px 16px",
+                          border: "1px solid var(--input-border)",
+                          borderTopLeftRadius: isFirst ? 6 : 0,
+                          borderBottomLeftRadius: isFirst ? 6 : 0,
+                          borderTopRightRadius: isLast ? 6 : 0,
+                          borderBottomRightRadius: isLast ? 6 : 0,
+                          borderRight: isLast ? "1px solid var(--input-border)" : "none",
+                          background: isActive ? "var(--accent)" : "transparent",
+                          color: isActive ? "#fff" : "var(--text)",
+                          fontFamily: "inherit",
+                          fontSize: 11,
+                          fontWeight: isActive ? 600 : 500,
+                          cursor: "pointer",
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 620 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "2px solid var(--input-border)" }}>
+                        <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, color: "var(--label)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Scenario</th>
+                        <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: "var(--label)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Direct {outcomeLabel}s</th>
+                        <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: "var(--label)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Lift {outcomeLabel}s</th>
+                        <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: "var(--label)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>First Purchase Rev</th>
+                        <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: "var(--label)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>LTV Rev</th>
+                        <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: "var(--label)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Revenue</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { name: "Conservative", color: "#c0392b", s: scenarios.worst },
+                        { name: "Expected", color: "#2980b9", s: scenarios.base },
+                        { name: "Optimistic", color: "#27ae60", s: scenarios.best },
+                      ].map((row, i) => {
+                        const horizonData = row.s.byHorizon ? row.s.byHorizon[directResponseHorizonKey] : null;
+                        const firstRev = horizonData ? horizonData.firstPurchaseRev : row.s.firstRev;
+                        const ltvRev = horizonData ? horizonData.ltvRev : Math.max(0, row.s.ltvRevenueWithLift - row.s.firstRev);
+                        const totalRev = horizonData ? horizonData.totalRev : row.s.ltvRevenueWithLift;
+                        return (
+                          <tr key={i} style={{ borderBottom: "1px solid var(--input-border)" }}>
+                            <td style={{ padding: "12px 10px", fontWeight: 600, color: row.color }}>{row.name}</td>
+                            <td style={{ padding: "12px 10px", textAlign: "right", fontFamily: "'DM Mono', monospace" }}>{Math.round(row.s.outcomes).toLocaleString()}</td>
+                            <td style={{ padding: "12px 10px", textAlign: "right", fontFamily: "'DM Mono', monospace", color: "var(--hint)" }}>+{Math.round(row.s.liftConversions).toLocaleString()}</td>
+                            <td style={{ padding: "12px 10px", textAlign: "right", fontFamily: "'DM Mono', monospace" }}>{fmt(firstRev)}</td>
+                            <td style={{ padding: "12px 10px", textAlign: "right", fontFamily: "'DM Mono', monospace", color: "var(--hint)" }}>{fmt(ltvRev)}</td>
+                            <td style={{ padding: "12px 10px", textAlign: "right", fontFamily: "'DM Mono', monospace", fontWeight: 700, color: row.color }}>{fmt(totalRev)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ marginTop: 14, padding: 12, background: "#f6f4f0", borderRadius: 6, fontSize: 11, color: "var(--hint)", lineHeight: 1.5 }}>
+                  <strong style={{ color: "var(--text)" }}>Revenue split:</strong> <strong style={{ color: "var(--text)" }}>First Purchase Rev</strong> = realized customers × {fmt(parseFloat(firstPurchaseValue) || parseFloat(aov) || ltv)} first-purchase value (high-confidence cash; recognized at the close month if within the selected horizon). <strong style={{ color: "var(--text)" }}>LTV Rev</strong> = value beyond first purchase, recognized linearly over 12 months from each cohort's close month — only the portion falling within the selected horizon is credited. For one-time-purchase brands, LTV Rev will be near zero by design.
+                  <br /><br />
+                  <strong style={{ color: "var(--text)" }}>Methodology:</strong> Lift % ranges from {scenarios.lift.low}–{scenarios.lift.high}% based on industry benchmarks for {variantData?.label}. At {fmt(parseFloat(brandedSearchSpend))}/mo branded spend ÷ {fmt(parseFloat(brandedSearchCPL))} CPL = {Math.round(scenarios.monthlyBrandedConversions).toLocaleString()} baseline branded conversions/month. {scenarios.hasDecayTail ? <>Lift conversions calculated as: <strong style={{ color: "var(--text)" }}>baseline × lift % × {scenarios.effectiveLiftMonthsAdjusted.toFixed(1)} effective months</strong> ({scenarios.durationMonths} campaign months{scenarios.hasSaturation ? <> with saturation discount applied to months 7+ (80% weighting to model audience saturation)</> : <></>} + 0.5 month tail at 50% strength to model decay after launch ends).</> : <>Lift conversions calculated as: <strong style={{ color: "var(--text)" }}>baseline × lift % × {scenarios.effectiveLiftMonthsAdjusted.toFixed(1)} effective months</strong> ({scenarios.durationMonths} campaign months always-on, with saturation discount of 80% applied to months 7+ to model diminishing returns from extended audience exposure).</>} {scenarios.isLeadGen && <><br /><strong style={{ color: "var(--text)" }}>Lead-gen adjustment:</strong> Total revenue assumes only {Math.round(scenarios.closeRate * 100)}% of leads close into paying customers (per the lead-to-close rate input).{scenarios.closeLag > 0 && <> Each cohort of leads closes {scenarios.closeLag} months after generation, and only the LTV portion within the 12-month ROI horizon is credited — leads closing past month 12 contribute zero. On average, {Math.round(scenarios.base.avgLtvFraction * 100)}% of each customer's 12-month LTV falls within the analysis window.</>}</>} Verifiable against the client's own search platform data within 30 days of campaign launch.
+                </div>
+              </div>
+            )}
+
+            {/* No Lift Warning */}
+            {!scenarios.hasLiftInputs && (
+              <div style={{ background: "#fff8f0", border: "1px solid #f0d9c0", borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#b85c38", marginBottom: 6 }}>Direct Response Only</div>
+                <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6 }}>
+                  This analysis shows directly attributable conversions only. Upper-funnel media typically drives an additional {variantData?.brandedSearchLift?.low}–{variantData?.brandedSearchLift?.high}% lift in branded search volume that is not reflected here. Add branded search spend and CPL inputs to model this.
+                </div>
+              </div>
+            )}
+
+            {/* Opportunity Cost (if reallocation) */}
+            {parseFloat(reallocationAmt) > 0 && existingChannelOutput && (
+              <div style={{ background: "#fff8f0", border: "1px solid #f0d9c0", borderRadius: 10, padding: 18, marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#b85c38", marginBottom: 8 }}>Opportunity Cost Note</div>
+                <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
+                  Reallocating {fmt(parseFloat(reallocationAmt))} from the existing channel would forgo approximately <strong>{existingChannelOutput} {outcomeLabel.toLowerCase()}s/month</strong> at current rates.
+                  {scenarios.base.outcomesWithLift > parseFloat(existingChannelOutput) ? (
+                    <> The expected scenario (with lift) projects <strong>{Math.round(scenarios.base.outcomesWithLift)} {outcomeLabel.toLowerCase()}s</strong> from this investment — a net gain of <strong>+{Math.round(scenarios.base.outcomesWithLift - parseFloat(existingChannelOutput))}</strong> {outcomeLabel.toLowerCase()}s.</>
+                  ) : (
+                    <> The expected scenario projects <strong>{Math.round(scenarios.base.outcomesWithLift)} {outcomeLabel.toLowerCase()}s</strong>. While volume may be lower, this channel drives brand equity, recall ({variantData?.recallRate}%), and downstream lift to existing channels that compounds over time.</>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Summary Card */}
+            <div style={{ background: "var(--card-bg)", borderRadius: 12, padding: 24, boxShadow: "0 1px 4px rgba(0,0,0,0.04)", marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--label)", marginBottom: 16 }}>Summary</div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 20 }}>
+                <div style={{ textAlign: "center", padding: 14, background: "#f8f8f6", borderRadius: 8 }}>
+                  <div style={{ fontSize: 10, color: "var(--hint)", marginBottom: 4 }}>Total Investment</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(totalInvestment)}</div>
+                  {parseFloat(productionCost) > 0 && <div style={{ fontSize: 10, color: "var(--hint)", marginTop: 2 }}>{fmt(parseFloat(mediaCommitment))} media + {fmt(parseFloat(productionCost))} production</div>}
+                </div>
+                <div style={{ textAlign: "center", padding: 14, background: "#f8f8f6", borderRadius: 8 }}>
+                  <div style={{ fontSize: 10, color: "var(--hint)", marginBottom: 4 }}>Breakeven Threshold</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: "var(--accent)" }}>{breakevenConvRate ? fmtPct(breakevenConvRate) : "—"}</div>
+                  <div style={{ fontSize: 10, color: "var(--hint)", marginTop: 2 }}>visitor → {outcomeLabel.toLowerCase()} rate needed</div>
+                </div>
+                <div style={{ textAlign: "center", padding: 14, background: "#f8f8f6", borderRadius: 8 }}>
+                  <div style={{ fontSize: 10, color: "var(--hint)", marginBottom: 4 }}>Benchmark Cost Per {outcomeLabel}</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmt(parseFloat(currentCostPer))}</div>
+                  <div style={{ fontSize: 10, color: "var(--hint)", marginTop: 2 }}>vs. {scenarios.base.outcomesWithLift > 0 ? fmt(totalInvestment / scenarios.base.outcomesWithLift) : "—"} expected here</div>
+                </div>
+              </div>
+
+              {/* Measurement */}
+              <div style={{ padding: 14, background: "#f4f8f4", borderRadius: 8, marginBottom: 16, border: "1px solid #e0ece0" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#27ae60", marginBottom: 6 }}>How We'll Measure This</div>
+                <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.5 }}>
+                  {variantData?.attribution} over a {variantData?.attributionWindow} attribution window{scenarios.hasLiftInputs ? ", plus month-over-month branded search volume tracked in the client's existing search platform" : ""}. Source benchmarks: {variantData?.source}.
+                </div>
+              </div>
+
+              {/* CTV / OOH high-recall channel warning when branded search lift inputs are blank */}
+              {(channel === "ctv" || channel === "ooh") && !scenarios.hasLiftInputs && (
+                <div style={{ padding: 14, background: "#fff8e8", borderRadius: 8, marginBottom: 16, border: "1px solid #f0d090" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#a06010", marginBottom: 6 }}>Important: This Analysis Understates {channel === "ctv" ? "CTV's" : "OOH's"} Real-World Value</div>
+                  <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.5 }}>
+                    {channel === "ctv" ? "CTV" : "OOH"} primarily drives brand awareness and branded search lift, not direct response. Without branded search baseline inputs (Step 3), this projection only captures the small slice of users who click through immediately — which significantly understates {channel === "ctv" ? "CTV's" : "OOH's"} typical real-world ROI. Real-world brands report {channel === "ctv" ? "blended CPAs of $80-200" : "branded search lift of 15-45%"} when {channel === "ctv" ? "CTV" : "OOH"} is measured holistically. <strong>Add branded search inputs above to see the complete picture.</strong>
+                  </div>
+                </div>
+              )}
+
+              {/* Recommendation — Conditional based on actual ROI */}
+              {(() => {
+                // CRITICAL: ROI and revenue numbers MUST source from byHorizon.m12, which is the
+                // same source the Decision Tree's "12 Months" tab uses. The legacy ltvRevenueWithLift
+                // field uses a different revenue accounting model (applies LTV fraction to the full
+                // LTV including first-purchase value, doesn't split first-purchase from LTV-beyond-first)
+                // and produces a different total. Mixing the two creates a visible inconsistency
+                // between the headline ROI in the recommendation and the 12-month ROI shown in the
+                // Decision Tree — exactly the kind of detail that erodes exec trust on first glance.
+                const m12Base = scenarios.base.byHorizon?.m12;
+                const m12Worst = scenarios.worst.byHorizon?.m12;
+                const m12Best = scenarios.best.byHorizon?.m12;
+                const baseTotalRev = m12Base ? m12Base.totalRev : scenarios.base.ltvRevenueWithLift;
+                const baseROI = m12Base ? m12Base.roi : ((baseTotalRev - totalInvestment) / totalInvestment) * 100;
+                const worstTotalRev = m12Worst ? m12Worst.totalRev : scenarios.worst.ltvRevenueWithLift;
+                const bestTotalRev = m12Best ? m12Best.totalRev : scenarios.best.ltvRevenueWithLift;
+                
+                // Sanity check: Is projected cost-per-outcome dramatically better than the user's stated benchmark?
+                const projectedCostPerOutcome = scenarios.base.outcomesWithLift > 0 
+                  ? totalInvestment / scenarios.base.outcomesWithLift 
+                  : Infinity;
+                const userBenchmarkCost = parseFloat(currentCostPer) || 0;
+                const ratioToBenchmark = userBenchmarkCost > 0 ? projectedCostPerOutcome / userBenchmarkCost : 1;
+                
+                // Two-tier suspicious-efficiency check + absolute ROI ceiling.
+                // Strong warning: projected CPA is <33% of benchmark OR baseROI > 1000% (implausible)
+                // Soft warning: projected CPA is 33-66% of benchmark (aggressive but possible)
+                const isStronglySuspicious = (ratioToBenchmark < 0.33 && userBenchmarkCost > 0) || baseROI > 1000;
+                const isMildlySuspicious = !isStronglySuspicious && ratioToBenchmark < 0.66 && ratioToBenchmark >= 0.33 && userBenchmarkCost > 0;
+                
+                const isPositive = baseROI > 0;
+                const isMarginal = baseROI > -15 && baseROI <= 0;
+                
+                // Tier the "Proceed" language by ROI strength
+                const isStrongCase = baseROI >= 200;
+                const isDefensibleCase = baseROI >= 50 && baseROI < 200;
+                const isModestCase = baseROI > 0 && baseROI < 50;
+                
+                // TIMING-CURVE ANALYSIS: read all four horizons and assess the spread
+                // For LTV-heavy brands (subscription DTC, lead-gen with long close cycles), the
+                // 12-month ROI can be strongly positive while the 1- and 3-month numbers are
+                // negative or near-zero. A "Strong Case" verdict that doesn't acknowledge this
+                // sets the pitch up to fail at the first quarterly review.
+                const m1ROI = scenarios.base.byHorizon?.m1?.roi ?? baseROI;
+                const m3ROI = scenarios.base.byHorizon?.m3?.roi ?? baseROI;
+                const m6ROI = scenarios.base.byHorizon?.m6?.roi ?? baseROI;
+                const m12ROI = scenarios.base.byHorizon?.m12?.roi ?? baseROI;
+                const fmtROI = (r) => (r >= 0 ? "+" : "") + Math.round(r) + "%";
+                
+                // Severity bands for timing spread:
+                // - severe: 3-month ROI negative while 12-month is strongly positive, OR
+                //   12mo-vs-3mo gap is huge (>300 points) regardless of sign — the case rests
+                //   so heavily on LTV compounding that early months can't carry the pitch
+                // - material: 3-month positive but 12-month is meaningfully higher (gap > 100)
+                // - modest: spread within 100 points — timing curve is gentle
+                const m12_m3_gap = m12ROI - m3ROI;
+                const isSevereTimingSpread = (m3ROI < 0 && m12ROI > 100) || m12_m3_gap > 300;
+                const isMaterialTimingSpread = !isSevereTimingSpread && m12_m3_gap > 100;
+                const isModestTimingSpread = !isSevereTimingSpread && !isMaterialTimingSpread;
+                
+                // Timing-curve paragraph rendered into all "proceed" tiers (Option A: always show).
+                // Language tailored to severity so it adds value without crying wolf on flat curves.
+                const TimingRead = () => (
+                  <>
+                    <br /><br />
+                    <strong style={{ color: "#f0c060" }}>Timing curve:</strong>{" "}
+                    {isSevereTimingSpread ? (
+                      <>
+                        the case rests heavily on LTV materializing across the full 12-month horizon. The expected ROI reads as <strong>{fmtROI(m1ROI)}</strong> at 1 month, <strong>{fmtROI(m3ROI)}</strong> at 3 months, <strong>{fmtROI(m6ROI)}</strong> at 6 months, and <strong>{fmtROI(m12ROI)}</strong> at 12 months. {m3ROI < 0 ? <>The early months will show the campaign visibly "in the red" — this is correct behavior for an LTV-heavy brand, not a red flag.</> : <>The early months will look strikingly underwhelming compared to the 12-month figure — this is correct behavior for an LTV-heavy brand, not a red flag, but it creates a credibility gap if the exec only sees the headline.</>} <strong>Before pitching:</strong> frame this as a payback-by-month-{scenarios.base.byHorizon?.m6?.roi >= 0 ? "6" : "12"} story, prepare the exec for the realized timeline, and align on quarterly check-in expectations. A junior strategist who pitches "+{Math.round(baseROI)}% ROI" without explaining the timing curve is setting up an uncomfortable Q1 review.
+                      </>
+                    ) : isMaterialTimingSpread ? (
+                      <>
+                        the realized ROI builds over the 12 months — <strong>{fmtROI(m1ROI)}</strong> at 1 month, <strong>{fmtROI(m3ROI)}</strong> at 3 months, <strong>{fmtROI(m6ROI)}</strong> at 6 months, <strong>{fmtROI(m12ROI)}</strong> at 12 months. The 12-month headline depends on LTV compounding; early months will look modest by comparison. When pitching, lead with the 3-month payback as the conservative anchor and the 12-month figure as the upside — not the other way around.
+                      </>
+                    ) : (
+                      <>
+                        revenue lands relatively front-loaded: <strong>{fmtROI(m1ROI)}</strong> at 1 month, <strong>{fmtROI(m3ROI)}</strong> at 3 months, <strong>{fmtROI(m6ROI)}</strong> at 6 months, <strong>{fmtROI(m12ROI)}</strong> at 12 months. The 12-month headline is broadly consistent with near-term performance, so timing won't drive significant exec skepticism. Pitch the expected case directly.
+                      </>
+                    )}
+                  </>
+                );
+
+                if (isStronglySuspicious) {
+                  return (
+                    <div style={{ padding: 18, background: "#5a3a1a", borderRadius: 8, color: "#fff" }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#f0c060", marginBottom: 10 }}>Recommendation: Verify Inputs Before Pitching</div>
+                      <div style={{ fontSize: 14, lineHeight: 1.7, fontWeight: 400 }}>
+                        {baseROI > 1000 ? (
+                          <>The projected ROI of <strong>{Math.round(baseROI).toLocaleString()}%</strong> is implausibly high. Sustained campaign returns above 10x are extraordinarily rare in upper-funnel media; a number this size almost always indicates an input error rather than a real opportunity. </>
+                        ) : (
+                          <>The math projects a cost-per-{outcomeLabel.toLowerCase()} of <strong>{fmt(projectedCostPerOutcome)}</strong> — roughly <strong>{Math.round((1 - ratioToBenchmark) * 100)}% better</strong> than the {fmt(userBenchmarkCost)} benchmark for the proven channel. A new, less-measurable channel projecting unit economics dramatically better than your established one is a red flag. </>
+                        )}
+                        {isLeadGen && !leadCloseRate ? <>The most likely culprit is the <strong>lead-to-close rate</strong> — defaulted to 15%. If your actual close rate is lower, the realized revenue per lead is overstated. </> : <></>}Before sending this to a client, verify: (1) the LTV input reflects realistic customer quality and a 12-month time horizon (not full lifetime), (2) for lead-gen models, the close rate is accurate, (3) the conversion rates in the scenario panel haven't drifted above defensible benchmarks, and (4) production/setup costs are fully captured.
+                      </div>
+                    </div>
+                  );
+                } else if (isMildlySuspicious && isPositive) {
+                  return (
+                    <div style={{ padding: 18, background: "#3a3a1a", borderRadius: 8, color: "#fff" }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#e0d060", marginBottom: 10 }}>Recommendation: Proceed With Caveats</div>
+                      <div style={{ fontSize: 14, lineHeight: 1.7, fontWeight: 400 }}>
+                        Expected ROI is <strong>{Math.round(baseROI)}%</strong>, with a projected cost-per-{outcomeLabel.toLowerCase()} of <strong>{fmt(projectedCostPerOutcome)}</strong> — roughly <strong>{Math.round((1 - ratioToBenchmark) * 100)}% better</strong> than the {fmt(userBenchmarkCost)} benchmark for the proven channel. The math is favorable but aggressive. Before pitching, stress-test the assumptions: a CPA <strong>materially below</strong> a proven channel often means the LTV is overstated, the conversion rate is overcalibrated, or production/operational costs aren't fully captured. A defensible pitch acknowledges this gap and presents the upside with explicit confidence ranges.
+                        <TimingRead />
+                      </div>
+                    </div>
+                  );
+                } else if (isStrongCase) {
+                  return (
+                    <div style={{ padding: 18, background: "#1a1a1a", borderRadius: 8, color: "#fff" }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--accent)", marginBottom: 10 }}>Recommendation: Strong Case — Proceed</div>
+                      <div style={{ fontSize: 14, lineHeight: 1.7, fontWeight: 400 }}>
+                        At a breakeven threshold of <strong>{fmtPct(breakevenConvRate)}</strong> — {breakevenConvRate < baseConversion ? <>well below the <strong>{fmtPct(baseConversion)}</strong> benchmark</> : <>near the <strong>{fmtPct(baseConversion)}</strong> benchmark</>} — the expected return is <strong>{fmt(baseTotalRev)}</strong> in 12-month revenue against {fmt(totalInvestment)} invested ({Math.round(baseROI)}% ROI{scenarios.base.breakevenMonth ? `, payback by month ${scenarios.base.breakevenMonth}` : ", within the campaign window"}). Even the conservative scenario {worstTotalRev > totalInvestment ? <>delivers a positive return of <strong>{fmt(worstTotalRev)}</strong></> : <>limits downside to <strong>{fmt(totalInvestment - worstTotalRev)}</strong></>}. The optimistic case delivers <strong>{fmt(bestTotalRev)}</strong>. {isSevereTimingSpread ? <><strong>The 12-month numbers support the pitch — but mind the timing curve below.</strong></> : <><strong>The numbers support pitching this confidently.</strong></>}
+                        <TimingRead />
+                      </div>
+                    </div>
+                  );
+                } else if (isDefensibleCase) {
+                  return (
+                    <div style={{ padding: 18, background: "#1a1a1a", borderRadius: 8, color: "#fff" }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--accent)", marginBottom: 10 }}>Recommendation: Defensible Case — Proceed</div>
+                      <div style={{ fontSize: 14, lineHeight: 1.7, fontWeight: 400 }}>
+                        Expected return is <strong>{fmt(baseTotalRev)}</strong> in 12-month revenue on {fmt(totalInvestment)} invested ({Math.round(baseROI)}% ROI{scenarios.base.breakevenMonth ? `, payback by month ${scenarios.base.breakevenMonth}` : ""}). The conservative scenario {worstTotalRev > totalInvestment ? <>still returns <strong>{fmt(worstTotalRev)}</strong></> : <>caps loss at <strong>{fmt(totalInvestment - worstTotalRev)}</strong></>}; the optimistic case delivers <strong>{fmt(bestTotalRev)}</strong>. <strong>Defensible to pitch</strong> — though execution quality (creative fit, audience alignment, attribution rigor) will determine whether actual results land closer to expected or to conservative.
+                        <TimingRead />
+                      </div>
+                    </div>
+                  );
+                } else if (isModestCase) {
+                  return (
+                    <div style={{ padding: 18, background: "#2a2a2a", borderRadius: 8, color: "#fff" }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#a0c0e0", marginBottom: 10 }}>Recommendation: Marginal Positive — Proceed Only With High Confidence</div>
+                      <div style={{ fontSize: 14, lineHeight: 1.7, fontWeight: 400 }}>
+                        Expected ROI is <strong>{Math.round(baseROI)}%</strong> ({fmt(baseTotalRev)} on {fmt(totalInvestment)}), which is positive but within the model's margin of error. The conservative scenario {worstTotalRev > totalInvestment ? <>holds positive at <strong>{fmt(worstTotalRev)}</strong></> : <>shows a loss of <strong>{fmt(totalInvestment - worstTotalRev)}</strong></>}. Before pitching, stress-test whether you have <strong>high confidence</strong> in the LTV, conversion, and close-rate inputs — at this margin, modest input optimism becomes the difference between profitable and unprofitable. If you can defend the numbers tightly, proceed; if any input is shaky, consider testing at smaller scale first.
+                        <TimingRead />
+                      </div>
+                    </div>
+                  );
+                } else if (isMarginal) {
+                  return (
+                    <div style={{ padding: 18, background: "#5a3a1a", borderRadius: 8, color: "#fff" }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#f0c060", marginBottom: 10 }}>Recommendation: Marginal — Reconsider Inputs</div>
+                      <div style={{ fontSize: 14, lineHeight: 1.7, fontWeight: 400 }}>
+                        The expected case is near breakeven (<strong>{Math.round(baseROI)}% ROI</strong>), with downside of <strong>{fmt(totalInvestment - worstTotalRev)}</strong> in the conservative scenario. The case for proceeding depends on whether the LTV input fully reflects this channel's customer quality (often higher than direct-response channels) and whether brand value beyond first-purchase revenue is being captured. Consider revisiting LTV assumptions or testing a different tactic variant before committing.
+                      </div>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div style={{ padding: 18, background: "#5a1a1a", borderRadius: 8, color: "#fff" }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#f0a0a0", marginBottom: 10 }}>Recommendation: Do Not Proceed As Modeled</div>
+                      <div style={{ fontSize: 14, lineHeight: 1.7, fontWeight: 400 }}>
+                        The current assumptions do not support proceeding — the expected case projects <strong>{Math.round(baseROI)}% ROI</strong>. Before pitching this, revisit: (1) the LTV assumption (is this truly a one-time purchase, or does this brand have repeat behavior?), (2) the channel/variant fit (lower CPM options may improve unit economics), or (3) the campaign duration and branded search lift inputs. The math should improve materially if any of these are understated.
+                      </div>
+                    </div>
+                  );
+                }
+              })()}
+            </div>
+
+            {/* Fine Print */}
+            <div style={{ fontSize: 10, color: "var(--hint)", textAlign: "center", lineHeight: 1.6, padding: "0 20px", marginBottom: 40 }}>
+              Projections based on industry benchmark data from {variantData?.source}. Benchmarks aggregated from authoritative third-party measurement: Podscribe Q1 2026 (97K+ campaigns, 30B+ impressions), Solomon Partners 2025 Major Media Effectiveness Analysis, ANA/DMA 2025 Response Rate Report, MAGNA 2025, Aspire 2026, and InfluenceFlow 2026. {scenarios.hasLiftInputs ? `Branded search lift assumes ${scenarios.lift.low}–${scenarios.lift.high}% increase in volume during the ${scenarios.durationMonths}-month campaign window — verifiable against the client's own search platform data within 30 days of launch.` : "Direct response only; brand-driven indirect lift not modeled."} Actual results may vary based on creative quality, audience targeting, and market conditions. LTV projections assume current retention patterns hold for new customers acquired through this channel.
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
